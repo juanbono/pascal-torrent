@@ -1,0 +1,5 @@
+bin/
+*.o
+*.ppu
+*.log
+test_*_tmp*
