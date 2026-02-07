@@ -21,6 +21,10 @@ const
   
   { File constants }
   MAX_TORRENT_FILE_SIZE = 10 * 1024 * 1024;  { 10MB max for .torrent files }
+  
+  { Hex character tables }
+  HEX_CHARS_LOWER: array[0..15] of Char = '0123456789abcdef';
+  HEX_CHARS_UPPER: array[0..15] of Char = '0123456789ABCDEF';
 
 type
   { Generic linked list node (can be used for various purposes) }
@@ -263,6 +267,9 @@ function DeleteFile(const Path: string): Boolean;
 
 { Rename file }
 function RenameFile(const OldPath, NewPath: string): Boolean;
+
+{ Create directory and all parent directories as needed }
+function EnsureDirectories(const Path: string): Boolean;
 
 implementation
 
@@ -669,8 +676,6 @@ begin
 end;
 
 function BytesToHex(const Bytes; Len: Integer): string;
-const
-  HexChars: array[0..15] of Char = '0123456789abcdef';
 var
   I: Integer;
   P: PByte;
@@ -679,14 +684,12 @@ begin
   P := PByte(@Bytes);
   for I := 0 to Len - 1 do
   begin
-    Result[I * 2 + 1] := HexChars[(P + I)^ shr 4];
-    Result[I * 2 + 2] := HexChars[(P + I)^ and $0F];
+    Result[I * 2 + 1] := HEX_CHARS_LOWER[(P + I)^ shr 4];
+    Result[I * 2 + 2] := HEX_CHARS_LOWER[(P + I)^ and $0F];
   end;
 end;
 
 function URLEncode(const S: string): string;
-const
-  HexChars: array[0..15] of Char = '0123456789ABCDEF';
 var
   I: Integer;
   C: Char;
@@ -727,8 +730,8 @@ begin
     else
     begin
       Result[Pos] := '%';
-      Result[Pos + 1] := HexChars[Ord(C) shr 4];
-      Result[Pos + 2] := HexChars[Ord(C) and $0F];
+      Result[Pos + 1] := HEX_CHARS_UPPER[Ord(C) shr 4];
+      Result[Pos + 2] := HEX_CHARS_UPPER[Ord(C) and $0F];
       Inc(Pos, 3);
     end;
   end;
@@ -787,13 +790,10 @@ begin
     if (S[I] = '%') and (I + 2 <= Len) then
     begin
       B := (HexValue(S[I + 1]) shl 4) or HexValue(S[I + 2]);
-      if B <= 255 then
-      begin
-        Result[Pos] := Chr(B);
-        Inc(Pos);
-        Inc(I, 3);
-        Continue;
-      end;
+      Result[Pos] := Chr(B);
+      Inc(Pos);
+      Inc(I, 3);
+      Continue;
     end
     else if S[I] = '+' then
     begin
@@ -1189,6 +1189,57 @@ begin
   {$I+}
 end;
 {$ENDIF}
+
+function EnsureDirectories(const Path: string): Boolean;
+var
+  Parent: string;
+  CurrentPath: string;
+begin
+  Result := False;
+  if Path = '' then Exit;
+  
+  { Remove trailing separator }
+  CurrentPath := Path;
+  {$IFDEF MSWINDOWS}
+  while (Length(CurrentPath) > 0) and 
+        (CurrentPath[Length(CurrentPath)] in ['\', '/']) do
+    Delete(CurrentPath, Length(CurrentPath), 1);
+  {$ELSE}
+  while (Length(CurrentPath) > 0) and 
+        (CurrentPath[Length(CurrentPath)] = '/') do
+    Delete(CurrentPath, Length(CurrentPath), 1);
+  {$ENDIF}
+  
+  if CurrentPath = '' then Exit;
+  
+  { If already exists, we're done }
+  if DirExists(CurrentPath) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Try to create directly first }
+  if MakeDir(CurrentPath) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Need to create parent first }
+  Parent := ExtractDir(CurrentPath);
+  if (Parent = '') or (Parent = CurrentPath) then
+  begin
+    Result := MakeDir(CurrentPath);
+    Exit;
+  end;
+  
+  { Recursively create parent }
+  if not EnsureDirectories(Parent) then Exit;
+  
+  { Now create this directory }
+  Result := MakeDir(CurrentPath);
+end;
 
 function FileExists(const Path: string): Boolean;
 {$IFDEF FPC}

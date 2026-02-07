@@ -321,11 +321,10 @@ function DecodeString(const Data: PChar; Len: Integer;
                       var Value: PBencodeValue; var BytesConsumed: Integer;
                       out ErrorMsg: string): Boolean;
 var
-  ColonPos: Integer;
-  StrLen: Int64;
-  CharsRead: Integer;
-  NewValue: PBencodeValue;
-  I: Integer;
+  ColonPos: Integer = -1;
+  StrLen: Int64 = 0;
+  CharsRead: Integer = 0;
+  NewValue: PBencodeValue = nil;
 begin
   Result := False;
   BytesConsumed := 0;
@@ -402,10 +401,10 @@ function DecodeInteger(const Data: PChar; Len: Integer;
                        var Value: PBencodeValue; var BytesConsumed: Integer;
                        out ErrorMsg: string): Boolean;
 var
-  IntVal: Int64;
-  CharsRead: Integer;
-  NewValue: PBencodeValue;
-  I: Integer;
+  IntVal: Int64 = 0;
+  CharsRead: Integer = 0;
+  NewValue: PBencodeValue = nil;
+  I: Integer = 0;
 begin
   Result := False;
   BytesConsumed := 0;
@@ -463,11 +462,12 @@ function DecodeList(const Data: PChar; Len: Integer;
                     var Value: PBencodeValue; var BytesConsumed: Integer;
                     out ErrorMsg: string): Boolean;
 var
-  Pos: Integer;
-  SubValue: PBencodeValue;
-  SubConsumed: Integer;
-  LastEntry, NewEntry: PBencodeListEntry;
-  NewValue: PBencodeValue;
+  Pos: Integer = 0;
+  SubValue: PBencodeValue = nil;
+  SubConsumed: Integer = 0;
+  LastEntry: PBencodeListEntry = nil;
+  NewEntry: PBencodeListEntry = nil;
+  NewValue: PBencodeValue = nil;
 begin
   Result := False;
   BytesConsumed := 0;
@@ -532,12 +532,13 @@ function DecodeDict(const Data: PChar; Len: Integer;
                     var Value: PBencodeValue; var BytesConsumed: Integer;
                     out ErrorMsg: string): Boolean;
 var
-  Pos: Integer;
-  KeyValue: PBencodeValue;
-  ValValue: PBencodeValue;
-  SubConsumed: Integer;
-  LastEntry, NewEntry: PBencodeDictEntry;
-  NewValue: PBencodeValue;
+  Pos: Integer = 0;
+  KeyValue: PBencodeValue = nil;
+  ValValue: PBencodeValue = nil;
+  SubConsumed: Integer = 0;
+  LastEntry: PBencodeDictEntry = nil;
+  NewEntry: PBencodeDictEntry = nil;
+  NewValue: PBencodeValue = nil;
 begin
   Result := False;
   BytesConsumed := 0;
@@ -679,6 +680,11 @@ function BencodeDecode(const Data: PChar; Len: Integer;
 var
   ErrorMsg: string;
 begin
+  { Initialize result }
+  Result.Success := False;
+  Result.ErrorMsg := '';
+  Result.BytesConsumed := 0;
+  
   Result.Success := DecodeValue(Data, Len, Value, Result.BytesConsumed, ErrorMsg);
   Result.ErrorMsg := ErrorMsg;
   

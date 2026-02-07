@@ -12,7 +12,10 @@ unit sha1utils;
 interface
 
 uses
-  SysUtils, sha1;
+  SysUtils, sha1, utils;
+
+const
+  SHA1_HASH_SIZE = 20;
 
 type
   { 20-byte SHA1 digest }
@@ -216,16 +219,14 @@ end;
 { ============================================================================ }
 
 function SHA1DigestToHex(const Digest: TSHA1Digest): string;
-const
-  HexChars: array[0..15] of Char = '0123456789abcdef';
 var
   I: Integer;
 begin
-  SetLength(Result, 40);
-  for I := 0 to 19 do
+  SetLength(Result, SHA1_HASH_SIZE * 2);
+  for I := 0 to SHA1_HASH_SIZE - 1 do
   begin
-    Result[I * 2 + 1] := HexChars[Digest[I] shr 4];
-    Result[I * 2 + 2] := HexChars[Digest[I] and $0F];
+    Result[I * 2 + 1] := HEX_CHARS_LOWER[Digest[I] shr 4];
+    Result[I * 2 + 2] := HEX_CHARS_LOWER[Digest[I] and $0F];
   end;
 end;
 
@@ -249,9 +250,9 @@ var
 begin
   Result := False;
   
-  if Length(Hex) <> 40 then Exit;
+  if Length(Hex) <> SHA1_HASH_SIZE * 2 then Exit;
   
-  for I := 0 to 19 do
+  for I := 0 to SHA1_HASH_SIZE - 1 do
   begin
     if not HexCharToByte(Hex[I * 2 + 1], HighNib) then Exit;
     if not HexCharToByte(Hex[I * 2 + 2], LowNib) then Exit;
@@ -270,7 +271,7 @@ var
   OutputLen: Integer;
   J: Integer;
 begin
-  { 20 bytes = 160 bits = 32 base32 chars }
+  { SHA1_HASH_SIZE bytes = 160 bits = 32 base32 chars }
   OutputLen := 32;
   SetLength(Result, OutputLen);
   
@@ -278,7 +279,7 @@ begin
   Bits := 0;
   J := 1;
   
-  for I := 0 to 19 do
+  for I := 0 to SHA1_HASH_SIZE - 1 do
   begin
     Val := (Val shl 8) or Digest[I];
     Inc(Bits, 8);
@@ -305,7 +306,7 @@ var
   I: Integer;
 begin
   Result := True;
-  for I := 0 to 19 do
+  for I := 0 to SHA1_HASH_SIZE - 1 do
     if A[I] <> B[I] then
     begin
       Result := False;
@@ -318,7 +319,7 @@ var
   I: Integer;
 begin
   Result := True;
-  for I := 0 to 19 do
+  for I := 0 to SHA1_HASH_SIZE - 1 do
     if Digest[I] <> 0 then
     begin
       Result := False;
@@ -330,7 +331,7 @@ procedure SHA1Clear(var Digest: TSHA1Digest);
 var
   I: Integer;
 begin
-  for I := 0 to 19 do
+  for I := 0 to SHA1_HASH_SIZE - 1 do
     Digest[I] := 0;
 end;
 
@@ -338,7 +339,7 @@ procedure SHA1Copy(const Source: TSHA1Digest; var Dest: TSHA1Digest);
 var
   I: Integer;
 begin
-  for I := 0 to 19 do
+  for I := 0 to SHA1_HASH_SIZE - 1 do
     Dest[I] := Source[I];
 end;
 
@@ -350,11 +351,11 @@ function ComputeInfoHash(const TorrentData: PChar; Len: Integer;
                          var Digest: TSHA1Digest): Boolean;
 { Simplified implementation - just finds "4:info" and hashes until matching 'e' }
 var
-  Pos: Integer;
-  Depth: Integer;
-  InString: Boolean;
-  StringLen: Int64;
-  I: Integer;
+  Pos: Integer = 0;
+  Depth: Integer = 0;
+  InString: Boolean = False;
+  StringLen: Int64 = 0;
+  I: Integer = 0;
 
   function ParseInt(const Data: PChar; DataLen: Integer; 
                     var Value: Int64; var Chars: Integer): Boolean;
