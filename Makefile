@@ -14,6 +14,8 @@ BENCODE_SRC = $(SRCDIR)/bencode.pas
 SHA1UTILS_SRC = $(SRCDIR)/sha1utils.pas
 UTILS_SRC = $(SRCDIR)/utils.pas
 LOGGING_SRC = $(SRCDIR)/logging.pas
+METAINFO_SRC = $(SRCDIR)/metainfo.pas
+FILEMGR_SRC = $(SRCDIR)/filemgr.pas
 
 # Test executables
 TEST_BENCODE = $(BINDIR)/test_bencode
@@ -22,11 +24,13 @@ TEST_SHA1 = $(BINDIR)/test_sha1
 TEST_UTILS = $(BINDIR)/test_utils
 TEST_LOGGING = $(BINDIR)/test_logging
 TEST_RUNNER = $(BINDIR)/test_runner
+TEST_METAINFO = $(BINDIR)/test_metainfo
+TEST_FILEMGR = $(BINDIR)/test_filemgr
 
 # Default target
 .PHONY: all clean test dirs debug release
 
-all: dirs $(TEST_RUNNER) $(TEST_BENCODE) $(TEST_BENCODE_EXTENDED) $(TEST_SHA1) $(TEST_UTILS) $(TEST_LOGGING)
+all: dirs $(TEST_RUNNER) $(TEST_BENCODE) $(TEST_BENCODE_EXTENDED) $(TEST_SHA1) $(TEST_UTILS) $(TEST_LOGGING) $(TEST_METAINFO) $(TEST_FILEMGR)
 
 dirs:
 	@mkdir -p $(BINDIR)
@@ -48,6 +52,12 @@ $(TEST_LOGGING): $(TESTDIR)/test_logging.pas $(LOGGING_SRC)
 	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
 
 $(TEST_RUNNER): $(TESTDIR)/test_runner.pas $(BENCODE_SRC) $(SHA1UTILS_SRC) $(UTILS_SRC)
+	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
+
+$(TEST_METAINFO): $(TESTDIR)/test_metainfo.pas $(METAINFO_SRC) $(BENCODE_SRC) $(SHA1UTILS_SRC) $(UTILS_SRC) $(LOGGING_SRC)
+	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
+
+$(TEST_FILEMGR): $(TESTDIR)/test_filemgr.pas $(FILEMGR_SRC) $(METAINFO_SRC) $(BENCODE_SRC) $(SHA1UTILS_SRC) $(UTILS_SRC) $(LOGGING_SRC)
 	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
 
 # Run all tests
@@ -74,6 +84,12 @@ test: all
 	@echo "--- Running Logging Tests ---"
 	@$(TEST_LOGGING) || exit 1
 	@echo ""
+	@echo "--- Running Metainfo Tests ---"
+	@$(TEST_METAINFO) || exit 1
+	@echo ""
+	@echo "--- Running File Manager Tests ---"
+	@$(TEST_FILEMGR) || exit 1
+	@echo ""
 	@echo "=============================================="
 	@echo "  ALL TESTS PASSED!"
 	@echo "==============================================
@@ -94,6 +110,12 @@ test-logging: dirs $(TEST_LOGGING)
 
 test-runner: dirs $(TEST_RUNNER)
 	$(TEST_RUNNER)
+
+test-metainfo: dirs $(TEST_METAINFO)
+	$(TEST_METAINFO)
+
+test-filemgr: dirs $(TEST_FILEMGR)
+	$(TEST_FILEMGR)
 
 # Debug build (with debug info, no optimization)
 debug: FPCFLAGS = -Mobjfpc -Sh -O0 -g -gl -vewh
@@ -118,7 +140,7 @@ install: release
 
 # Help
 help:
-	@echo "PascalTorrent - Phase 1 Build System"
+	@echo "PascalTorrent - Phase 2 Build System"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all          - Build all test executables (default)"
@@ -128,6 +150,8 @@ help:
 	@echo "  test-utils   - Run utils unit tests only"
 	@echo "  test-logging - Run logging unit tests only"
 	@echo "  test-runner  - Run master test runner only"
+	@echo "  test-metainfo- Run metainfo unit tests only"
+	@echo "  test-filemgr - Run file manager unit tests only"
 	@echo "  debug        - Build with debug symbols"
 	@echo "  release      - Build optimized release"
 	@echo "  clean        - Remove all build artifacts"
