@@ -16,6 +16,7 @@ UTILS_SRC = $(SRCDIR)/utils.pas
 LOGGING_SRC = $(SRCDIR)/logging.pas
 METAINFO_SRC = $(SRCDIR)/metainfo.pas
 FILEMGR_SRC = $(SRCDIR)/filemgr.pas
+PROTOCOL_SRC = $(SRCDIR)/protocol.pas
 
 # Test executables
 TEST_BENCODE = $(BINDIR)/test_bencode
@@ -26,11 +27,13 @@ TEST_LOGGING = $(BINDIR)/test_logging
 TEST_RUNNER = $(BINDIR)/test_runner
 TEST_METAINFO = $(BINDIR)/test_metainfo
 TEST_FILEMGR = $(BINDIR)/test_filemgr
+TEST_PROTOCOL = $(BINDIR)/test_protocol
+TEST_INTEGRATION = $(BINDIR)/test_integration
 
 # Default target
 .PHONY: all clean test dirs debug release
 
-all: dirs $(TEST_RUNNER) $(TEST_BENCODE) $(TEST_BENCODE_EXTENDED) $(TEST_SHA1) $(TEST_UTILS) $(TEST_LOGGING) $(TEST_METAINFO) $(TEST_FILEMGR)
+all: dirs $(TEST_RUNNER) $(TEST_BENCODE) $(TEST_BENCODE_EXTENDED) $(TEST_SHA1) $(TEST_UTILS) $(TEST_LOGGING) $(TEST_METAINFO) $(TEST_FILEMGR) $(TEST_PROTOCOL) $(TEST_INTEGRATION)
 
 dirs:
 	@mkdir -p $(BINDIR)
@@ -58,6 +61,12 @@ $(TEST_METAINFO): $(TESTDIR)/test_metainfo.pas $(METAINFO_SRC) $(BENCODE_SRC) $(
 	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
 
 $(TEST_FILEMGR): $(TESTDIR)/test_filemgr.pas $(FILEMGR_SRC) $(METAINFO_SRC) $(BENCODE_SRC) $(SHA1UTILS_SRC) $(UTILS_SRC) $(LOGGING_SRC)
+	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
+
+$(TEST_PROTOCOL): $(TESTDIR)/test_protocol.pas $(PROTOCOL_SRC) $(SHA1UTILS_SRC) $(UTILS_SRC)
+	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
+
+$(TEST_INTEGRATION): $(TESTDIR)/test_integration.pas $(BENCODE_SRC) $(METAINFO_SRC) $(FILEMGR_SRC) $(PROTOCOL_SRC) $(SHA1UTILS_SRC) $(UTILS_SRC)
 	$(FPC) $(FPCFLAGS) -Fu$(SRCDIR) -o$@ $<
 
 # Run all tests
@@ -90,9 +99,15 @@ test: all
 	@echo "--- Running File Manager Tests ---"
 	@$(TEST_FILEMGR) || exit 1
 	@echo ""
+	@echo "--- Running Protocol Tests ---"
+	@$(TEST_PROTOCOL) || exit 1
+	@echo ""
+	@echo "--- Running Integration Tests ---"
+	@$(TEST_INTEGRATION) || exit 1
+	@echo ""
 	@echo "=============================================="
 	@echo "  ALL TESTS PASSED!"
-	@echo "==============================================
+	@echo "=============================================="
 
 # Run individual test suites
 test-bencode: dirs $(TEST_BENCODE) $(TEST_BENCODE_EXTENDED)
@@ -116,6 +131,12 @@ test-metainfo: dirs $(TEST_METAINFO)
 
 test-filemgr: dirs $(TEST_FILEMGR)
 	$(TEST_FILEMGR)
+
+test-protocol: dirs $(TEST_PROTOCOL)
+	$(TEST_PROTOCOL)
+
+test-integration: dirs $(TEST_INTEGRATION)
+	$(TEST_INTEGRATION)
 
 # Debug build (with debug info, no optimization)
 debug: FPCFLAGS = -Mobjfpc -Sh -O0 -g -gl -vewh
@@ -152,6 +173,8 @@ help:
 	@echo "  test-runner  - Run master test runner only"
 	@echo "  test-metainfo- Run metainfo unit tests only"
 	@echo "  test-filemgr - Run file manager unit tests only"
+	@echo "  test-protocol- Run protocol unit tests only"
+	@echo "  test-integration - Run integration tests only"
 	@echo "  debug        - Build with debug symbols"
 	@echo "  release      - Build optimized release"
 	@echo "  clean        - Remove all build artifacts"
