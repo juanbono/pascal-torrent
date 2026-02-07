@@ -196,10 +196,7 @@ implementation
 { Calculate bitfield size in bytes for given piece count }
 function BitfieldSize(PieceCount: Integer): Integer;
 begin
-  if PieceCount <= 0 then
-    Result := 0
-  else
-    Result := (PieceCount + 7) div 8;
+  Result := BitfieldBytes(PieceCount);
 end;
 
 { Set a bit in a bitfield with bounds checking }

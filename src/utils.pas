@@ -268,6 +268,9 @@ function DeleteFile(const Path: string): Boolean;
 { Rename file }
 function RenameFile(const OldPath, NewPath: string): Boolean;
 
+{ Calculate bitfield size in bytes for given piece count }
+function BitfieldBytes(PieceCount: Integer): Integer;
+
 { Create directory and all parent directories as needed }
 function EnsureDirectories(const Path: string): Boolean;
 
@@ -1323,5 +1326,14 @@ begin
   {$I+}
 end;
 {$ENDIF}
+
+{ Calculate bitfield size in bytes for given piece count }
+function BitfieldBytes(PieceCount: Integer): Integer;
+begin
+  if PieceCount <= 0 then
+    Result := 0
+  else
+    Result := (PieceCount + 7) div 8;
+end;
 
 end.
