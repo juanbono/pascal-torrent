@@ -270,23 +270,31 @@ var
   Len: Integer;
   Decoded: TWireMessage;
   Consumed: Integer;
+  Success: Boolean;
 begin
   WriteLn(#10'=== Testing Request Message ===');
   
+  { Valid request tests }
   TestResult('BuildRequest with valid buffer', 
              BuildRequest(5, 16384, 16384, @Buffer, SizeOf(Buffer), Len));
   TestResult('Request message is 17 bytes', 
              Len = 17);
   
-  DecodeMessage(@Buffer, Len, Decoded, Consumed);
+  Success := DecodeMessage(@Buffer, Len, Decoded, Consumed);
   TestResult('Request decodes successfully', 
-             Decoded.MsgId = MSG_REQUEST);
+             Success and (Decoded.MsgId = MSG_REQUEST));
   TestResult('Request index is 5', 
              Decoded.ReqIndex = 5);
   TestResult('Request begin is 16384', 
              Decoded.ReqBegin = 16384);
   TestResult('Request length is 16384', 
              Decoded.ReqLength = 16384);
+  
+  { Error case tests - buffer too small }
+  TestResult('BuildRequest rejects nil buffer', 
+             not BuildRequest(0, 0, 16384, nil, 100, Len));
+  TestResult('BuildRequest rejects small buffer', 
+             not BuildRequest(0, 0, 16384, @Buffer, 16, Len));
 end;
 
 procedure TestPieceMessage;
@@ -555,6 +563,7 @@ var
   Data: array[0..1023] of Byte;
   I: Integer;
   Success: Boolean;
+  DecodeSuccess: Boolean;
 begin
   WriteLn(#10'=== Testing Encode/Decode Round-Trips ===');
   
@@ -566,9 +575,11 @@ begin
   EncodedMsg.MsgId := MSG_HAVE;
   EncodedMsg.HaveIndex := 12345;
   Success := EncodeMessage(EncodedMsg, @Buffer, SizeOf(Buffer), BytesWritten);
-  DecodeMessage(@Buffer, BytesWritten, DecodedMsg, BytesConsumed);
-  TestResult('Have round-trip successful', 
-             Success and (DecodedMsg.HaveIndex = 12345));
+  DecodeSuccess := DecodeMessage(@Buffer, BytesWritten, DecodedMsg, BytesConsumed);
+  TestResult('Have round-trip encode successful', Success);
+  TestResult('Have round-trip decode successful', DecodeSuccess);
+  TestResult('Have round-trip data correct', 
+             DecodeSuccess and (DecodedMsg.HaveIndex = 12345));
   
   { Test 2: Request round-trip }
   EncodedMsg.Length := 13;
@@ -577,9 +588,11 @@ begin
   EncodedMsg.ReqBegin := 262144;
   EncodedMsg.ReqLength := 16384;
   Success := EncodeMessage(EncodedMsg, @Buffer, SizeOf(Buffer), BytesWritten);
-  DecodeMessage(@Buffer, BytesWritten, DecodedMsg, BytesConsumed);
-  TestResult('Request round-trip successful', 
-             Success and (DecodedMsg.ReqIndex = 99) and 
+  DecodeSuccess := DecodeMessage(@Buffer, BytesWritten, DecodedMsg, BytesConsumed);
+  TestResult('Request round-trip encode successful', Success);
+  TestResult('Request round-trip decode successful', DecodeSuccess);
+  TestResult('Request round-trip data correct', 
+             DecodeSuccess and (DecodedMsg.ReqIndex = 99) and 
              (DecodedMsg.ReqBegin = 262144) and (DecodedMsg.ReqLength = 16384));
   
   { Test 3: Bitfield round-trip }
@@ -588,9 +601,11 @@ begin
   EncodedMsg.BitfieldData := @Data;
   EncodedMsg.BitfieldLen := 64;
   Success := EncodeMessage(EncodedMsg, @Buffer, SizeOf(Buffer), BytesWritten);
-  DecodeMessage(@Buffer, BytesWritten, DecodedMsg, BytesConsumed);
-  TestResult('Bitfield round-trip successful', 
-             Success and (DecodedMsg.BitfieldLen = 64) and
+  DecodeSuccess := DecodeMessage(@Buffer, BytesWritten, DecodedMsg, BytesConsumed);
+  TestResult('Bitfield round-trip encode successful', Success);
+  TestResult('Bitfield round-trip decode successful', DecodeSuccess);
+  TestResult('Bitfield round-trip data correct', 
+             DecodeSuccess and (DecodedMsg.BitfieldLen = 64) and
              CompareMem(@Data, DecodedMsg.BitfieldData, 64));
 end;
 
