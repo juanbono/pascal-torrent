@@ -11,7 +11,7 @@ This file contains essential information for AI agents working on the PascalTorr
 ### Build Commands
 ```bash
 make all           # Build all tests
-make test          # Run all tests (1,084 tests)
+make test          # Run all tests (1,090 tests)
 make clean         # Clean build artifacts
 make coverage      # Generate coverage report
 ```
@@ -27,14 +27,14 @@ make coverage      # Generate coverage report
 
 | Module | Purpose | Lines | Functions |
 |--------|---------|-------|-----------|
-| `bencode.pas` | Bencode encoding/decoding (BitTorrent format) | ~750 | 50+ |
-| `metainfo.pas` | Torrent file parsing & metadata management | ~1250 | 80+ |
-| `filemgr.pas` | Piece-based file I/O with verification | ~1150 | 70+ |
-| `protocol.pas` | Peer Wire Protocol message encoding/decoding | ~800 | 60+ |
-| `sockwrap.pas` | Cross-platform TCP socket wrapper | ~950 | 50+ |
-| `sha1utils.pas` | SHA1 hashing with progress callbacks | ~450 | 25+ |
-| `utils.pas` | General utilities (buffers, strings, timers) | ~1150 | 90+ |
-| `logging.pas` | Thread-safe logging infrastructure | ~540 | 30+ |
+| `bencode.pas` | Bencode encoding/decoding (BitTorrent format) | ~1000 | 55+ |
+| `metainfo.pas` | Torrent file parsing & metadata management | ~1200 | 80+ |
+| `filemgr.pas` | Piece-based file I/O with verification | ~1100 | 70+ |
+| `protocol.pas` | Peer Wire Protocol message encoding/decoding | ~850 | 60+ |
+| `sockwrap.pas` | Cross-platform TCP socket wrapper | ~1050 | 55+ |
+| `sha1utils.pas` | SHA1 hashing with progress callbacks | ~450 | 30+ |
+| `utils.pas` | General utilities (buffers, strings, timers) | ~1100 | 90+ |
+| `logging.pas` | Thread-safe logging infrastructure | ~550 | 30+ |
 
 ### Module Dependencies
 
@@ -182,43 +182,28 @@ end;
 - Error tests: `test_error_scenarios.pas`
 
 ### Test Organization
-Tests are self-contained Pascal programs (not using a framework):
+Tests use the shared `testframework.pas` unit for consistent reporting:
 ```pascal
 program test_module;
 
 uses
-  SysUtils, module_name;
-
-var
-  Passed: Integer = 0;
-  Failed: Integer = 0;
+  SysUtils, module_name, testframework;
 
 // Individual test procedures
 procedure TestFeature;
 begin
-  WriteLn('  Test: Feature description...');
-  // ... test code ...
-  Passed := Passed + 1;
-  WriteLn('    PASS');
+  BeginSuite('Testing Feature');
+  TestResult('Test description', SomeCondition);
+  AssertEquals('Value check', Expected, Actual);
+  EndSuite;
 end;
 
 // Main
 begin
-  WriteLn('==============================================');
-  WriteLn('  MODULE UNIT TEST SUITE');
-  WriteLn('==============================================');
-  WriteLn;
-  
   TestFeature;
   // ... more tests ...
   
-  WriteLn;
-  WriteLn('==============================================');
-  WriteLn('  RESULTS: ', Passed, '/', Passed + Failed, ' tests passed');
-  WriteLn('==============================================');
-  
-  if Failed > 0 then
-    Halt(1);  // Exit with error code for CI
+  ExitWithResult;  // Handles summary and exit code
 end.
 ```
 
@@ -234,17 +219,16 @@ Each module test file should cover:
 ```pascal
 procedure TestSomething;
 begin
-  WriteLn('  Test: Description...');
+  BeginSuite('Testing Something');
   { setup }
   try
     { test code }
-    Passed := Passed + 1;
-    WriteLn('    PASS');
-  except
-    Failed := Failed + 1;
-    WriteLn('    FAIL');
+    TestResult('Test description', Condition);
+    AssertEquals('Expected value', Expected, Actual);
+  finally
+    { cleanup }
   end;
-  { cleanup }
+  EndSuite;
 end;
 ```
 
@@ -683,6 +667,9 @@ On restart: ReadBitfieldFile() → Restore state
 - [FPC Programmer's Guide](https://www.freepascal.org/docs-html/prog/prog.html)
 
 ### Project Documentation
+- [API Reference](docs/API_REFERENCE.md) - Complete API documentation for all modules
+- [Architecture](docs/ARCHITECTURE.md) - System architecture and module interactions
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 - [Project Docs](docs/) - Architecture decisions, BEP summaries
 - [README.md](README.md) - Build instructions, quick start
 - [Makefile](Makefile) - Build targets and dependencies
