@@ -9,30 +9,7 @@
 program test_runner;
 
 uses
-  SysUtils, bencode, sha1utils, utils;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
-  StartTime: TDateTime;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, testframework, bencode, sha1utils, utils;
 
 procedure RunBencodeTests;
 var
@@ -42,7 +19,7 @@ var
   StrVal: string;
   IntVal: Int64;
 begin
-  WriteLn(#10'=== BENCODE TESTS ===');
+  BeginSuite('BENCODE TESTS');
   
   { String encoding/decoding }
   Value := BencodeNewString('hello');
@@ -104,6 +81,8 @@ begin
   TestResult('Reject invalid input',
              not Result.Success);
   if Result.Success then BencodeFree(Value);
+  
+  EndSuite;
 end;
 
 procedure RunSHA1Tests;
@@ -114,7 +93,7 @@ var
   Context: TSHA1Context;
   Data: array[0..2] of Byte;
 begin
-  WriteLn(#10'=== SHA1 TESTS ===');
+  BeginSuite('SHA1 TESTS');
   
   { Test vectors }
   Hash := SHA1String('abc');
@@ -153,6 +132,8 @@ begin
              VerifyPiece(PChar('piece content'), 13, Hash));
   TestResult('Verify wrong piece fails',
              not VerifyPiece(PChar('wrong content'), 13, Hash));
+  
+  EndSuite;
 end;
 
 procedure RunUtilsTests;
@@ -166,7 +147,7 @@ var
   Path: string;
   PeerID: array[0..19] of Byte;
 begin
-  WriteLn(#10'=== UTILS TESTS ===');
+  BeginSuite('UTILS TESTS');
   
   { Linked lists }
   Head := nil;
@@ -225,45 +206,19 @@ begin
   GeneratePeerID(PeerID, '-PT0100-');
   TestResult('Generate peer ID',
              (PeerID[0] = Ord('-')) and (PeerID[1] = Ord('P')));
-end;
-
-procedure PrintSummary;
-var
-  Duration: Double;
-begin
-  Duration := (Now - StartTime) * 24 * 60 * 60 * 1000;  { milliseconds }
   
-  WriteLn(#10'==============================================');
-  WriteLn('  TEST SUMMARY');
-  WriteLn('==============================================');
-  WriteLn('Total:   ', TotalTests);
-  WriteLn('Passed:  ', PassedTests);
-  WriteLn('Failed:  ', FailedTests);
-  WriteLn('Time:    ', Format('%.2f', [Duration]), ' ms');
-  WriteLn('==============================================');
-  
-  if FailedTests > 0 then
-  begin
-    WriteLn('RESULT: FAILED');
-    Halt(1);
-  end
-  else
-  begin
-    WriteLn('RESULT: PASSED');
-  end;
+  EndSuite;
 end;
 
 begin
-  StartTime := Now;
   Randomize;
   
-  WriteLn('==============================================');
-  WriteLn('  PASCALTORRENT PHASE 1 TEST RUNNER');
-  WriteLn('==============================================');
+  BeginSuite('PASCALTORRENT PHASE 1 TEST RUNNER');
   
   RunBencodeTests;
   RunSHA1Tests;
   RunUtilsTests;
   
-  PrintSummary;
+  EndSuite;
+  ExitWithResult;
 end.

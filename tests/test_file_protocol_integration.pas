@@ -13,30 +13,11 @@ program test_file_protocol_integration;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, bencode, metainfo, filemgr, protocol, sha1utils, utils;
+  SysUtils, bencode, metainfo, filemgr, protocol, sha1utils, utils,
+  testframework;
 
 var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
   TempDir: string;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
 
 { ============================================================================ }
 { Setup/Teardown                                                               }
@@ -778,9 +759,7 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  FILE + PROTOCOL INTEGRATION TESTS');
-  WriteLn('==============================================');
+  BeginSuite('FILE + PROTOCOL INTEGRATION TESTS');
   
   SetupTestDirectory;
   try
@@ -791,20 +770,10 @@ begin
     TestResumePartialDownload;
     TestMultiFileTorrentProtocol;
     
-    { Summary }
-    WriteLn(#10'==============================================');
-    WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-    WriteLn('==============================================');
-    
-    if FailedTests > 0 then
-    begin
-      WriteLn('FAILED: ', FailedTests, ' tests failed');
-      Halt(1);
-    end
-    else
-      WriteLn('SUCCESS: All integration tests passed!');
-      
   finally
     CleanupTestDirectory;
   end;
+  
+  EndSuite;
+  ExitWithResult;
 end.

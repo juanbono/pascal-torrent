@@ -83,11 +83,24 @@ procedure ExitWithResult;
 { Utility Functions                                                            }
 { ============================================================================ }
 
-{ Format bytes for display }
-function FormatBytes(Bytes: QWord): string;
-
 { Format time for display }
 function FormatTime(Milliseconds: Double): string;
+
+{ ============================================================================ }
+{ Extended Assertions (added during migration)                                   }
+{ ============================================================================ }
+
+{ Assert equality for QWord (for large file sizes) }
+procedure AssertEquals(const TestName: string; Expected, Actual: QWord;
+                       const Msg: string = '');
+
+{ Assert not equal for integers }
+procedure AssertNotEquals(const TestName: string; Expected, Actual: Integer;
+                          const Msg: string = '');
+
+{ Assert that pointer is not nil - alias for AssertNotNil for convenience }
+procedure AssertAssigned(const TestName: string; Ptr: Pointer;
+                         const Msg: string = '');
 
 implementation
 
@@ -262,18 +275,6 @@ end;
 { Utility Functions                                                            }
 { ============================================================================ }
 
-function FormatBytes(Bytes: QWord): string;
-begin
-  if Bytes < 1024 then
-    Result := Format('%d B', [Bytes])
-  else if Bytes < 1024 * 1024 then
-    Result := Format('%.2f KB', [Bytes / 1024])
-  else if Bytes < 1024 * 1024 * 1024 then
-    Result := Format('%.2f MB', [Bytes / (1024 * 1024)])
-  else
-    Result := Format('%.2f GB', [Bytes / (1024 * 1024 * 1024)]);
-end;
-
 function FormatTime(Milliseconds: Double): string;
 begin
   if Milliseconds < 1 then
@@ -282,6 +283,49 @@ begin
     Result := Format('%.3f ms', [Milliseconds])
   else
     Result := Format('%.3f s', [Milliseconds / 1000]);
+end;
+
+{ ============================================================================ }
+{ Extended Assertions Implementation                                             }
+{ ============================================================================ }
+
+procedure AssertEquals(const TestName: string; Expected, Actual: QWord;
+                       const Msg: string = '');
+var
+  FullMsg: string;
+begin
+  if Expected = Actual then
+    TestResult(TestName, True)
+  else
+  begin
+    FullMsg := Format('Expected %u, got %u', [Expected, Actual]);
+    if Msg <> '' then
+      FullMsg := FullMsg + ' - ' + Msg;
+    TestResult(TestName, False, FullMsg);
+  end;
+end;
+
+procedure AssertNotEquals(const TestName: string; Expected, Actual: Integer;
+                          const Msg: string = '');
+var
+  FullMsg: string;
+begin
+  if Expected <> Actual then
+    TestResult(TestName, True)
+  else
+  begin
+    FullMsg := Format('Expected different from %d', [Expected]);
+    if Msg <> '' then
+      FullMsg := FullMsg + ' - ' + Msg;
+    TestResult(TestName, False, FullMsg);
+  end;
+end;
+
+procedure AssertAssigned(const TestName: string; Ptr: Pointer;
+                         const Msg: string = '');
+begin
+  { Just an alias for AssertNotNil for more natural language }
+  AssertNotNil(TestName, Ptr, Msg);
 end;
 
 end.

@@ -15,30 +15,11 @@ program test_error_scenarios;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, bencode, metainfo, filemgr, protocol, sha1utils, utils, sockwrap;
+  SysUtils, bencode, metainfo, filemgr, protocol, sha1utils, utils, sockwrap,
+  testframework;
 
 var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
   TempDir: string;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
 
 { ============================================================================ }
 { Setup                                                                        }
@@ -649,9 +630,7 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  ERROR SCENARIOS AND EDGE CASE TESTS');
-  WriteLn('==============================================');
+  BeginSuite('ERROR SCENARIOS AND EDGE CASE TESTS');
   
   SetupTestDirectory;
   try
@@ -662,20 +641,10 @@ begin
     TestSocketErrorHandling;
     TestProtocolBufferBounds;
     
-    { Summary }
-    WriteLn(#10'==============================================');
-    WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-    WriteLn('==============================================');
-    
-    if FailedTests > 0 then
-    begin
-      WriteLn('FAILED: ', FailedTests, ' tests failed');
-      Halt(1);
-    end
-    else
-      WriteLn('SUCCESS: All error scenario tests passed!');
-      
   finally
     CleanupTestDirectory;
   end;
+  
+  EndSuite;
+  ExitWithResult;
 end.

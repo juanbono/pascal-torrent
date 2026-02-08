@@ -9,31 +9,7 @@ program test_protocol;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, protocol, sha1utils, utils;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-
-{ ============================================================================ }
-{ Test Framework                                                               }
-{ ============================================================================ }
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, protocol, sha1utils, utils, testframework;
 
 { ============================================================================ }
 { Handshake Tests                                                              }
@@ -623,9 +599,7 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  PEER WIRE PROTOCOL UNIT TESTS');
-  WriteLn('==============================================');
+  BeginSuite('PEER WIRE PROTOCOL UNIT TESTS');
   
   { Handshake tests }
   TestHandshakeEncodeDecode;
@@ -651,16 +625,6 @@ begin
   { Round-trips }
   TestRoundTrips;
   
-  { Summary }
-  WriteLn(#10'==============================================');
-  WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-  WriteLn('==============================================');
-  
-  if PassedTests < TotalTests then
-  begin
-    WriteLn('FAILED: ', TotalTests - PassedTests, ' tests failed');
-    Halt(1);
-  end
-  else
-    WriteLn('SUCCESS: All tests passed!');
+  EndSuite;
+  ExitWithResult;
 end.

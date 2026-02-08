@@ -7,35 +7,13 @@
 program test_logging;
 
 uses
-  SysUtils, logging;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, logging, testframework;
 
 procedure TestLoggerCreateDestroy;
 var
   Logger: PLogger;
 begin
-  WriteLn(#10'=== Testing Logger Create/Destroy ===');
+  BeginSuite('Testing Logger Create/Destroy');
   
   { Test 1: Create logger }
   Logger := LoggerCreate;
@@ -68,11 +46,13 @@ begin
   { Test 4: Destroy nil }
   LoggerDestroy(nil);
   TestResult('LoggerDestroy(nil) is safe', True);
+  
+  EndSuite;
 end;
 
 procedure TestGlobalLogging;
 begin
-  WriteLn(#10'=== Testing Global Logging ===');
+  BeginSuite('Testing Global Logging');
   
   { Test 1: Init logging }
   TestResult('InitLogging succeeds',
@@ -92,11 +72,13 @@ begin
   { Test 4: Double shutdown }
   ShutdownLogging;
   TestResult('Double ShutdownLogging is safe', True);
+  
+  EndSuite;
 end;
 
 procedure TestLogLevelToStr;
 begin
-  WriteLn(#10'=== Testing LogLevelToStr ===');
+  BeginSuite('Testing LogLevelToStr');
   
   TestResult('llDebug -> DEBUG',
              LogLevelToStr(llDebug) = 'DEBUG');
@@ -108,13 +90,15 @@ begin
              LogLevelToStr(llError) = 'ERROR');
   TestResult('llFatal -> FATAL',
              LogLevelToStr(llFatal) = 'FATAL');
+  
+  EndSuite;
 end;
 
 procedure TestStrToLogLevel;
 var
   Level: TLogLevel;
 begin
-  WriteLn(#10'=== Testing StrToLogLevel ===');
+  BeginSuite('Testing StrToLogLevel');
   
   TestResult('StrToLogLevel DEBUG',
              StrToLogLevel('DEBUG', Level) and (Level = llDebug));
@@ -136,6 +120,8 @@ begin
   { Test invalid }
   TestResult('StrToLogLevel invalid returns false',
              not StrToLogLevel('INVALID', Level));
+  
+  EndSuite;
 end;
 
 procedure TestLogLevelFiltering;
@@ -143,7 +129,7 @@ var
   Logger: PLogger;
   OldDestinations: TLogDestinations;
 begin
-  WriteLn(#10'=== Testing Log Level Filtering ===');
+  BeginSuite('Testing Log Level Filtering');
   
   Logger := LoggerCreate;
   if Logger = nil then
@@ -177,6 +163,8 @@ begin
   
   Logger^.Destinations := OldDestinations;
   LoggerDestroy(Logger);
+  
+  EndSuite;
 end;
 
 procedure TestLogFileOperations;
@@ -188,7 +176,7 @@ var
   InfoFound: Boolean;
   Content: string;
 begin
-  WriteLn(#10'=== Testing Log File Operations ===');
+  BeginSuite('Testing Log File Operations');
   
   TestFilename := 'test_log_file.log';
   
@@ -264,11 +252,13 @@ begin
   { Cleanup }
   if FileExists(TestFilename) then
     DeleteFile(TestFilename);
+  
+  EndSuite;
 end;
 
 procedure TestColorFunctions;
 begin
-  WriteLn(#10'=== Testing Color Functions ===');
+  BeginSuite('Testing Color Functions');
   
   { Note: Color output depends on UseColors setting }
   InitLogging;
@@ -293,13 +283,15 @@ begin
   { Test ColorReset without logger }
   TestResult('ColorReset without logger is safe',
              ColorReset = '');
+  
+  EndSuite;
 end;
 
 procedure TestLogConvenienceFunctions;
 var
   TestFilename: string;
 begin
-  WriteLn(#10'=== Testing Log Convenience Functions ===');
+  BeginSuite('Testing Log Convenience Functions');
   
   TestFilename := 'test_convenience.log';
   if FileExists(TestFilename) then
@@ -345,13 +337,15 @@ begin
   { Cleanup }
   if FileExists(TestFilename) then
     DeleteFile(TestFilename);
+  
+  EndSuite;
 end;
 
 procedure TestLoggerFlush;
 var
   Logger: PLogger;
 begin
-  WriteLn(#10'=== Testing LoggerFlush ===');
+  BeginSuite('Testing LoggerFlush');
   
   Logger := LoggerCreate;
   if Logger <> nil then
@@ -376,13 +370,15 @@ begin
   { Test nil }
   LoggerFlush(nil);
   TestResult('LoggerFlush(nil) is safe', True);
+  
+  EndSuite;
 end;
 
 procedure TestLoggerSetColors;
 var
   Logger: PLogger;
 begin
-  WriteLn(#10'=== Testing LoggerSetColors ===');
+  BeginSuite('Testing LoggerSetColors');
   
   Logger := LoggerCreate;
   if Logger <> nil then
@@ -405,6 +401,8 @@ begin
   { Test nil }
   LoggerSetColors(nil, True);
   TestResult('LoggerSetColors(nil) is safe', True);
+  
+  EndSuite;
 end;
 
 procedure RunAllTests;
@@ -423,22 +421,9 @@ begin
   TestLogConvenienceFunctions;
   TestLoggerFlush;
   TestLoggerSetColors;
-  
-  WriteLn(#10'==============================================');
-  WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-  WriteLn('==============================================');
-  
-  if FailedTests > 0 then
-  begin
-    WriteLn('FAILED: ', FailedTests, ' test(s) failed');
-    Halt(1);
-  end
-  else
-  begin
-    WriteLn('All tests passed!');
-  end;
 end;
 
 begin
   RunAllTests;
+  ExitWithResult;
 end.

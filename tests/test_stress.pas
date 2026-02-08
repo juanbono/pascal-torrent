@@ -13,30 +13,10 @@ program test_stress;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, bencode, metainfo, filemgr, protocol, sha1utils, utils;
+  SysUtils, bencode, metainfo, filemgr, protocol, sha1utils, utils, testframework;
 
 var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
   TempDir: string;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
 
 { ============================================================================ }
 { Setup                                                                        }
@@ -654,9 +634,7 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  PERFORMANCE AND STRESS TESTS');
-  WriteLn('==============================================');
+  BeginSuite('PERFORMANCE AND STRESS TESTS');
   
   SetupTestDirectory;
   try
@@ -668,20 +646,10 @@ begin
     TestMemoryUsage;
     TestFileIOPerformance;
     
-    { Summary }
-    WriteLn(#10'==============================================');
-    WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-    WriteLn('==============================================');
-    
-    if FailedTests > 0 then
-    begin
-      WriteLn('FAILED: ', FailedTests, ' tests failed');
-      Halt(1);
-    end
-    else
-      WriteLn('SUCCESS: All stress tests passed!');
-      
   finally
     CleanupTestDirectory;
   end;
+  
+  EndSuite;
+  ExitWithResult;
 end.

@@ -14,29 +14,8 @@ program test_peer_integration;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, Classes, sockwrap, protocol, sha1utils, utils, metainfo;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, Classes, sockwrap, protocol, sha1utils, utils, metainfo,
+  testframework;
 
 { ============================================================================ }
 { Test Helper: Create a mock torrent info hash                        }
@@ -797,9 +776,7 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  PEER WIRE PROTOCOL INTEGRATION TESTS');
-  WriteLn('==============================================');
+  BeginSuite('PEER WIRE PROTOCOL INTEGRATION TESTS');
   
   Randomize;
   
@@ -810,16 +787,6 @@ begin
   TestHaveAnnouncements;
   TestCancelFlow;
   
-  { Summary }
-  WriteLn(#10'==============================================');
-  WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-  WriteLn('==============================================');
-  
-  if FailedTests > 0 then
-  begin
-    WriteLn('FAILED: ', FailedTests, ' tests failed');
-    Halt(1);
-  end
-  else
-    WriteLn('SUCCESS: All integration tests passed!');
+  EndSuite;
+  ExitWithResult;
 end.

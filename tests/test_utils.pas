@@ -7,29 +7,7 @@
 program test_utils;
 
 uses
-  SysUtils, utils;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, utils, testframework;
 
 { Global variable for counting free calls in tests }
 var
@@ -1314,11 +1292,8 @@ begin
              Count = 20);
 end;
 
-procedure RunAllTests;
 begin
-  WriteLn('==============================================');
-  WriteLn('  UTILS UNIT TEST SUITE');
-  WriteLn('==============================================');
+  BeginSuite('UTILS UNIT TEST SUITE');
   
   Randomize;
   
@@ -1348,21 +1323,6 @@ begin
   TestFileOperationsExtended;
   TestFileOperationsMore;
   
-  WriteLn(#10'==============================================');
-  WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-  WriteLn('==============================================');
-  
-  if FailedTests > 0 then
-  begin
-    WriteLn('FAILED: ', FailedTests, ' test(s) failed');
-    Halt(1);
-  end
-  else
-  begin
-    WriteLn('All tests passed!');
-  end;
-end;
-
-begin
-  RunAllTests;
+  EndSuite;
+  ExitWithResult;
 end.

@@ -10,28 +10,11 @@ program test_integration;
 
 uses
   SysUtils, 
+  testframework,
   bencode, metainfo, filemgr, protocol, sha1utils, utils;
 
 var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
   TempDir: string;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
 
 { ============================================================================ }
 { Integration Test 1: Complete Torrent Loading and Validation                 }
@@ -59,7 +42,7 @@ var
   FilesPath: string;
   DataPath: string;
 begin
-  WriteLn(#10'=== Integration Test: Torrent Loading Workflow ===');
+  BeginSuite('Integration Test: Torrent Loading Workflow');
   
   { Step 1: Create a realistic multi-file torrent structure }
   Root := BencodeNewDict;
@@ -108,6 +91,7 @@ begin
   if not ParseResult.Success then
   begin
     BencodeFree(Root);
+    EndSuite;
     Exit;
   end;
   
@@ -137,6 +121,7 @@ begin
     if not ComputeInfoHashFromBencode(InfoDict, InfoHash) then
     begin
       TestResult('Compute info hash from bencode', False);
+      EndSuite;
       Exit;
     end;
     InfoHashHex := SHA1DigestToHex(InfoHash);
@@ -188,6 +173,8 @@ begin
     RmDir(FilesPath);
     {$I+}
   end;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -211,7 +198,7 @@ var
   PiecesStr: string;
   I: Integer;
 begin
-  WriteLn(#10'=== Integration Test: Piece Verification Workflow ===');
+  BeginSuite('Integration Test: Piece Verification Workflow');
   
   { Create a single-piece torrent }
   Root := BencodeNewDict;
@@ -242,6 +229,7 @@ begin
   begin
     TestResult('Parse torrent for piece test', False);
     BencodeFree(Root);
+    EndSuite;
     Exit;
   end;
   
@@ -252,6 +240,7 @@ begin
     if not FileManagerCreate(Meta, TempDir, FM) then
     begin
       TestResult('Create file manager for piece test', False);
+      EndSuite;
       Exit;
     end;
     
@@ -304,6 +293,8 @@ begin
     BencodeFree(Root);
     DeleteFile(JoinPath(TempDir, 'single.bin'));
   end;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -321,7 +312,7 @@ var
   BytesConsumed: Integer;
   I: Integer;
 begin
-  WriteLn(#10'=== Integration Test: Protocol Message Round-Trip ===');
+  BeginSuite('Integration Test: Protocol Message Round-Trip');
   
   { Test 1: Have message with realistic piece index }
   FillChar(Encoded, SizeOf(Encoded), 0);
@@ -393,6 +384,8 @@ begin
   TestResult('Piece data length preserved', Decoded.PieceDataLen = 16384);
   TestResult('Piece data matches', 
              CompareMem(@PieceData[0], Decoded.PieceData, 16384));
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -412,7 +405,7 @@ var
   PiecesStr: string;
   I: Integer;
 begin
-  WriteLn(#10'=== Integration Test: Error Handling and Edge Cases ===');
+  BeginSuite('Integration Test: Error Handling and Edge Cases');
   
   { Test 1: Malformed torrent (negative piece length) }
   Root := BencodeNewDict;
@@ -475,6 +468,8 @@ begin
     FreeTorrentMeta(Meta);
   end;
   BencodeFree(Root);
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -498,7 +493,7 @@ var
   WriteOps: Cardinal;
   Errors: Cardinal;
 begin
-  WriteLn(#10'=== Integration Test: Statistics and Progress ===');
+  BeginSuite('Integration Test: Statistics and Progress');
   
   { Create torrent with 10 pieces }
   Root := BencodeNewDict;
@@ -520,6 +515,7 @@ begin
   begin
     TestResult('Parse torrent for progress test', False);
     BencodeFree(Root);
+    EndSuite;
     Exit;
   end;
   
@@ -527,6 +523,7 @@ begin
     if not FileManagerCreate(Meta, TempDir, FM) then
     begin
       TestResult('Create file manager for progress test', False);
+      EndSuite;
       Exit;
     end;
     
@@ -568,6 +565,8 @@ begin
     BencodeFree(Root);
     DeleteFile(JoinPath(TempDir, 'progress_test.bin'));
   end;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -575,15 +574,13 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  PASCALTORRENT INTEGRATION TESTS');
-  WriteLn('==============================================');
+  BeginSuite('PASCALTORRENT INTEGRATION TESTS');
   
   { Setup temp directory }
   TempDir := GetTempDir + 'pascaltorrent_int_test' + PathDelim;
   if not DirExists(TempDir) then
     MakeDir(TempDir);
-  
+
   try
     { Run integration tests }
     TestTorrentLoadingWorkflow;
@@ -592,23 +589,15 @@ begin
     TestErrorHandlingAndEdgeCases;
     TestStatisticsAndProgress;
     
-    { Summary }
-    WriteLn(#10'==============================================');
-    WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-    WriteLn('==============================================');
-    
-    if PassedTests < TotalTests then
-    begin
-      WriteLn('FAILED: ', TotalTests - PassedTests, ' tests failed');
-      Halt(1);
-    end
-    else
-      WriteLn('SUCCESS: All integration tests passed!');
-      
   finally
-    { Cleanup temp directory }
+    { Cleanup temp directory - ignore errors if not empty }
     {$I-}
     RmDir(TempDir);
     {$I+}
+    { Suppress any IO error from RmDir }
+    InOutRes := 0;
   end;
+  
+  EndSuite;
+  ExitWithResult;
 end.

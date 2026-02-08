@@ -7,7 +7,7 @@
 program test_filemgr;
 
 uses
-  SysUtils, bencode, metainfo, filemgr, sha1utils, utils, logging;
+  SysUtils, bencode, metainfo, filemgr, sha1utils, utils, logging, testframework;
 
 type
   TTestFileRec = record
@@ -16,29 +16,7 @@ type
   end;
 
 var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
-  Verbose: Boolean = True;
   TempDir: string;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    if Verbose then
-      WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
 
 { ============================================================================ }
 { Helper: Create a test torrent with specific properties                       }
@@ -936,9 +914,7 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  FILE MANAGER UNIT TESTS');
-  WriteLn('==============================================');
+  BeginSuite('FILE MANAGER UNIT TESTS');
   
   InitLogging;
   LoggerSetLevel(GlobalLogger, llWarning);
@@ -960,20 +936,8 @@ begin
     TestPieceEdgeCases;
     TestBitfieldBounds;
     
-    WriteLn(#10'==============================================');
-    WriteLn('  Results: ', PassedTests, '/', TotalTests, ' tests passed');
-    WriteLn('==============================================');
-    
-    if FailedTests > 0 then
-    begin
-      WriteLn('FAILED: ', FailedTests, ' tests failed');
-      Halt(1);
-    end
-    else
-    begin
-      WriteLn('SUCCESS: All tests passed!');
-      Halt(0);
-    end;
+    EndSuite;
+    ExitWithResult;
   finally
     { Cleanup temp directory }
     {$I-}

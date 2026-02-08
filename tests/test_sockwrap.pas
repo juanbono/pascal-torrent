@@ -1,36 +1,16 @@
 {
-  test_sockets.pas - Unit tests for Socket Wrapper
+  test_sockwrap.pas - Unit tests for Socket Wrapper
   
   Tests socket operations including lifecycle, connections, and error handling.
   Note: Full connection tests require network access.
 }
 
-program test_sockets;
+program test_sockwrap;
 
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, sockwrap;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, sockwrap, testframework;
 
 { ============================================================================ }
 { Socket Lifecycle Tests                                                       }
@@ -41,7 +21,7 @@ var
   Context: PSocketContext;
   Success: Boolean;
 begin
-  WriteLn(#10'=== Testing Socket Lifecycle ===');
+  BeginSuite('Testing Socket Lifecycle');
   
   { Test 1: Initialize socket subsystem }
   Success := SocketInit;
@@ -77,13 +57,15 @@ begin
   end;
   
   SocketCleanup;
+  
+  EndSuite;
 end;
 
 procedure TestSocketErrorHandling;
 var
   ErrorStr: string;
 begin
-  WriteLn(#10'=== Testing Socket Error Handling ===');
+  BeginSuite('Testing Socket Error Handling');
   
   { Test error strings }
   ErrorStr := SocketErrorString(SOCK_OK);
@@ -112,6 +94,8 @@ begin
   
   SocketDestroy(nil);
   TestResult('SocketDestroy(nil) does not crash', True);
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -122,7 +106,7 @@ procedure TestAddressResolution;
 var
   IP: string;
 begin
-  WriteLn(#10'=== Testing Address Resolution ===');
+  BeginSuite('Testing Address Resolution');
   
   SocketInit;
   
@@ -147,6 +131,8 @@ begin
              IP = '127.0.0.1');
   
   SocketCleanup;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -159,7 +145,7 @@ var
   Res: Integer;
   Addr: TSocketAddr;
 begin
-  WriteLn(#10'=== Testing Server Socket Operations ===');
+  BeginSuite('Testing Server Socket Operations');
   
   SocketInit;
   
@@ -171,6 +157,7 @@ begin
   if Server = nil then
   begin
     SocketCleanup;
+    EndSuite;
     Exit;
   end;
   
@@ -202,6 +189,8 @@ begin
   
   SocketDestroy(Server);
   SocketCleanup;
+  
+  EndSuite;
 end;
 
 procedure TestServerBindErrors;
@@ -211,7 +200,7 @@ var
   Port: Word;
   Addr: TSocketAddr;
 begin
-  WriteLn(#10'=== Testing Server Bind Errors ===');
+  BeginSuite('Testing Server Bind Errors');
   
   SocketInit;
   
@@ -243,6 +232,8 @@ begin
   SocketDestroy(Server1);
   SocketDestroy(Server2);
   SocketCleanup;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -254,7 +245,7 @@ var
   Context: PSocketContext;
   Success: Boolean;
 begin
-  WriteLn(#10'=== Testing Blocking Mode Operations ===');
+  BeginSuite('Testing Blocking Mode Operations');
   
   SocketInit;
   
@@ -277,6 +268,8 @@ begin
   end;
   
   SocketCleanup;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -287,7 +280,7 @@ procedure TestSocketStates;
 var
   Context: PSocketContext;
 begin
-  WriteLn(#10'=== Testing Socket States ===');
+  BeginSuite('Testing Socket States');
   
   SocketInit;
   
@@ -296,6 +289,7 @@ begin
   begin
     TestResult('Create socket for state tests', False);
     SocketCleanup;
+    EndSuite;
     Exit;
   end;
   
@@ -313,6 +307,8 @@ begin
   
   SocketDestroy(Context);
   SocketCleanup;
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -321,7 +317,7 @@ end;
 
 procedure TestErrorCodes;
 begin
-  WriteLn(#10'=== Testing Error Code Constants ===');
+  BeginSuite('Testing Error Code Constants');
   
   TestResult('SOCK_OK = 0', SOCK_OK = 0);
   TestResult('SOCK_ERR_CREATE < 0', SOCK_ERR_CREATE < 0);
@@ -335,6 +331,8 @@ begin
   TestResult('SOCK_ERR_WOULDBLOCK < 0', SOCK_ERR_WOULDBLOCK < 0);
   TestResult('SOCK_ERR_INVALID < 0', SOCK_ERR_INVALID < 0);
   TestResult('SOCK_ERR_RESOLVE < 0', SOCK_ERR_RESOLVE < 0);
+  
+  EndSuite;
 end;
 
 { ============================================================================ }
@@ -342,10 +340,6 @@ end;
 { ============================================================================ }
 
 begin
-  WriteLn('==============================================');
-  WriteLn('  SOCKET WRAPPER UNIT TESTS');
-  WriteLn('==============================================');
-  
   { Lifecycle tests }
   TestSocketLifecycle;
   TestSocketErrorHandling;
@@ -364,16 +358,5 @@ begin
   TestSocketStates;
   TestErrorCodes;
   
-  { Summary }
-  WriteLn(#10'==============================================');
-  WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-  WriteLn('==============================================');
-  
-  if PassedTests < TotalTests then
-  begin
-    WriteLn('FAILED: ', TotalTests - PassedTests, ' tests failed');
-    Halt(1);
-  end
-  else
-    WriteLn('SUCCESS: All tests passed!');
+  ExitWithResult;
 end.
