@@ -732,8 +732,9 @@ begin
   Result := False;
   MsgLen := 0;
   
-  if (Buffer = nil) or (BufLen < 5 + BitfieldLen) then Exit;
-  if BitfieldLen < 0 then Exit;
+  { Safe check: prevent integer overflow in addition }
+  if (Buffer = nil) or (BitfieldLen < 0) or (BufLen < 5) or 
+     (BufLen - 5 < BitfieldLen) then Exit;
   
   WriteBE32(Buffer, 0, Cardinal(1 + BitfieldLen));
   Buffer^[4] := MSG_BITFIELD;
@@ -753,8 +754,9 @@ begin
   Result := False;
   MsgLen := 0;
   
-  if (Buffer = nil) or (BufLen < 13 + DataLen) then Exit;
-  if DataLen < 0 then Exit;
+  { Safe check: prevent integer overflow in addition }
+  if (Buffer = nil) or (DataLen < 0) or (BufLen < 13) or 
+     (BufLen - 13 < DataLen) then Exit;
   
   WriteBE32(Buffer, 0, Cardinal(9 + DataLen));
   Buffer^[4] := MSG_PIECE;

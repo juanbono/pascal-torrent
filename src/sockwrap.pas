@@ -513,12 +513,13 @@ var
 {$ENDIF}
 begin
   Result := False;
-  if (Context = nil) or (Context^.Handle < 0) then Exit;
-  
+  if Context = nil then Exit;
   {$IFDEF WINDOWS}
+  if Context^.Handle = INVALID_SOCKET then Exit;
   NonBlock := 1;
   Result := ioctlsocket(Context^.Handle, FIONBIO, NonBlock) = 0;
   {$ELSE}
+  if Context^.Handle < 0 then Exit;
   Flags := fpFcntl(Context^.Handle, F_GETFL, 0);
   if Flags < 0 then Exit;
   Result := fpFcntl(Context^.Handle, F_SETFL, Flags or O_NONBLOCK) >= 0;
@@ -535,12 +536,13 @@ var
 {$ENDIF}
 begin
   Result := False;
-  if (Context = nil) or (Context^.Handle < 0) then Exit;
-  
+  if Context = nil then Exit;
   {$IFDEF WINDOWS}
+  if Context^.Handle = INVALID_SOCKET then Exit;
   NonBlock := 0;
   Result := ioctlsocket(Context^.Handle, FIONBIO, NonBlock) = 0;
   {$ELSE}
+  if Context^.Handle < 0 then Exit;
   Flags := fpFcntl(Context^.Handle, F_GETFL, 0);
   if Flags < 0 then Exit;
   Result := fpFcntl(Context^.Handle, F_SETFL, Flags and not O_NONBLOCK) >= 0;
@@ -1017,8 +1019,12 @@ var
   Res: Integer;
 begin
   Result := False;
-  if (Context = nil) or (Context^.Handle < 0) then Exit;
-  
+  if Context = nil then Exit;
+  {$IFDEF WINDOWS}
+  if Context^.Handle = INVALID_SOCKET then Exit;
+  {$ELSE}
+  if Context^.Handle < 0 then Exit;
+  {$ENDIF}
   {$IFDEF WINDOWS}
   FD_ZERO(ReadFds);
   FD_SET(Context^.Handle, ReadFds);
@@ -1054,8 +1060,12 @@ var
   Res: Integer;
 begin
   Result := False;
-  if (Context = nil) or (Context^.Handle < 0) then Exit;
-  
+  if Context = nil then Exit;
+  {$IFDEF WINDOWS}
+  if Context^.Handle = INVALID_SOCKET then Exit;
+  {$ELSE}
+  if Context^.Handle < 0 then Exit;
+  {$ENDIF}
   {$IFDEF WINDOWS}
   FD_ZERO(WriteFds);
   FD_SET(Context^.Handle, WriteFds);
@@ -1094,12 +1104,13 @@ var
 {$ENDIF}
 begin
   Result := 0;
-  if (Context = nil) or (Context^.Handle < 0) then Exit;
-  
+  if Context = nil then Exit;
   {$IFDEF WINDOWS}
+  if Context^.Handle = INVALID_SOCKET then Exit;
   if ioctlsocket(Context^.Handle, FIONREAD, Available) = 0 then
     Result := Integer(Available);
   {$ELSE}
+  if Context^.Handle < 0 then Exit;
   if fpIOCtl(Context^.Handle, FIONREAD, @Available) = 0 then
     Result := Available;
   {$ENDIF}
@@ -1203,8 +1214,12 @@ var
   MaxFd: Integer;
 begin
   Result := False;
-  if (Context = nil) or (Context^.Handle < 0) then Exit;
-  
+  if Context = nil then Exit;
+  {$IFDEF WINDOWS}
+  if Context^.Handle = INVALID_SOCKET then Exit;
+  {$ELSE}
+  if Context^.Handle < 0 then Exit;
+  {$ENDIF}
   {$IFDEF WINDOWS}
   if WantRead then
   begin

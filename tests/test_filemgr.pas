@@ -875,26 +875,21 @@ begin
       
       try
         { Test valid indices }
-        TestResult('Mark piece 0 valid', True);
         FileManagerMarkPieceVerified(FM, 0);
         TestResult('Piece 0 verified', FileManagerIsPieceVerified(FM, 0));
         
-        TestResult('Mark piece 3 valid', True);
         FileManagerMarkPieceVerified(FM, 3);
         TestResult('Piece 3 verified', FileManagerIsPieceVerified(FM, 3));
         
-        { Test out of bounds - should not crash }
-        TestResult('Mark negative index handled', True);
+        { Test out of bounds - should not crash and return safe defaults }
         FileManagerMarkPieceVerified(FM, -1);
+        TestResult('Mark negative index handled', True);
         
-        TestResult('Mark large index handled', True);
         FileManagerMarkPieceVerified(FM, 1000);
+        TestResult('Mark large index handled', True);
         
-        TestResult('Check negative index handled', True);
         TestResult('Negative index not verified', 
                    not FileManagerIsPieceVerified(FM, -1));
-        
-        TestResult('Check large index handled', True);
         TestResult('Large index not verified', 
                    not FileManagerIsPieceVerified(FM, 1000));
         

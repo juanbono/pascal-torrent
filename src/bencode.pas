@@ -367,8 +367,8 @@ begin
     Exit;
   end;
   
-  { Check we have enough data }
-  if ColonPos + 1 + StrLen > Len then
+  { Check we have enough data - use Int64 to prevent overflow }
+  if (Int64(ColonPos) + 1 + StrLen > Len) then
   begin
     ErrorMsg := 'String: not enough data';
     Exit;

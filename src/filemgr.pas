@@ -509,6 +509,12 @@ begin
       begin
         Close(OpenedFile^.Handle);
         Reset(OpenedFile^.Handle, 1);
+        { Check if Reset succeeded }
+        if IOResult <> 0 then
+        begin
+          Dispose(OpenedFile);
+          Exit;
+        end;
       end;
     end;
   end;
@@ -643,7 +649,8 @@ begin
   begin
     {$I-}
     Seek(F, FileSize - 1);
-    Truncate(F);
+    if IOResult = 0 then
+      Truncate(F);
     {$I+}
   end;
   

@@ -11,7 +11,7 @@ PascalTorrent is a complete BitTorrent client implementation that avoids object-
 - **Purely Procedural**: No classes, objects, or methods - only records and procedures
 - **Cross-Platform**: Supports Linux, macOS, and Windows
 - **Modular Design**: Clean separation of concerns across 8 core modules
-- **Comprehensive Testing**: 1,082 tests with high code coverage
+- **Comprehensive Testing**: 1,084 tests with high code coverage
 - **BitTorrent Protocol Compliance**: Implements BEP 3 (Peer Protocol) and related specs
 
 ## Architecture
@@ -78,18 +78,21 @@ The project includes comprehensive test coverage:
 
 | Module | Tests | Status |
 |--------|-------|--------|
-| bencode | 138 | ✅ Passing |
-| protocol | 99 | ✅ Passing |
-| filemgr | 95 | ✅ Passing |
-| metainfo | 93 | ✅ Passing |
+| bencode | 62 | ✅ Passing |
+| protocol | 98 | ✅ Passing |
+| filemgr | 69 | ✅ Passing |
+| metainfo | 82 | ✅ Passing |
 | utils | 209 | ✅ Passing |
-| sha1utils | 42 | ✅ Passing |
-| logging | 64 | ✅ Passing |
-| sockwrap | 53 | ✅ Passing |
-| error-scenarios | 67 | ✅ Passing |
+| sha1utils | 41 | ✅ Passing |
+| logging | 56 | ✅ Passing |
+| sockwrap | 49 | ✅ Passing |
+| error-scenarios | 62 | ✅ Passing |
 | large-files | 20 | ✅ Passing |
-| **Integration** | **193** | ✅ **Passing** |
-| **Total** | **1,082** | ✅ **Passing** |
+| **Integration** | **328** | ✅ **Passing** |
+| **Stress** | 31 | ✅ Passing |
+| **Extended** | 74 | ✅ Passing |
+| **Runner** | 30 | ✅ Passing |
+| **Total** | **1,084** | ✅ **Passing** |
 
 ### Running Integration Tests
 

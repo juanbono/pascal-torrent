@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **SHA1 progress calculation** - Uses QWord to prevent overflow on large files
 
 #### Testing
-- **Test count corrected** to 1,082 tests (was under-reported as 917)
+- **Test count corrected** to 1,084 tests (verified from TestResult calls)
 - **Shared test framework** (`testframework.pas`) for consistent test reporting
 
 ### Changed
@@ -44,7 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Windows socket binding** - Added validation for bind address
 
 #### Documentation
-- Updated test counts in README.md and AGENTS.md to 1,082
+- Updated test counts in README.md, AGENTS.md, and CHANGELOG.md to 1,084
 - Updated test counts table with corrected per-module numbers
 
 ### Fixed
@@ -128,7 +128,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 | Phase 1 | 603 | 0 | 603 |
 | Phase 2 | 603 | 0 | 603 |
 | Phase 3 | 603 | 232 | 835 |
-| Current | 600+ | 300+ | 917+ |
+| Current | 620+ | 464+ | 1,084+ |
 
 ## Module Statistics
 
@@ -168,7 +168,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 | test_large_files.pas | 20 | Large file (>4GB) tests |
 | test_stress.pas | 31 | Performance tests |
 
-**Total: 917 tests**
+**Total: 1,084 tests**
 
 ## Future Roadmap
 

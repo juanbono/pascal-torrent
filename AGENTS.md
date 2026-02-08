@@ -11,7 +11,7 @@ This file contains essential information for AI agents working on the PascalTorr
 ### Build Commands
 ```bash
 make all           # Build all tests
-make test          # Run all tests (1,082 tests)
+make test          # Run all tests (1,084 tests)
 make clean         # Clean build artifacts
 make coverage      # Generate coverage report
 ```
