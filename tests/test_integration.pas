@@ -409,8 +409,6 @@ var
   FM: PFileManager;
   IOResult: TIOResult;
   Buffer: array[0..1023] of Byte;
-  Valid: Boolean;
-  ErrorMsg: string;
   PiecesStr: string;
   I: Integer;
 begin

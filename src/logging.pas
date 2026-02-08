@@ -11,7 +11,15 @@ unit logging;
 interface
 
 uses
-  SysUtils;
+  SysUtils
+  {$IFDEF LOGGING_THREADSAFE}
+  {$IFDEF MSWINDOWS}
+  , Windows
+  {$ELSE}
+  , cthreads, cmem, pthreads
+  {$ENDIF}
+  {$ENDIF}
+  ;
 
 type
   TLogLevel = (llDebug, llInfo, llWarning, llError, llFatal);
@@ -44,7 +52,15 @@ type
     QueueTail: PLogEntry;
     MaxQueueSize: Integer;
     QueueSize: Integer;
-    Sync: Pointer;  { Critical section or mutex }
+    {$IFDEF LOGGING_THREADSAFE}
+    {$IFDEF MSWINDOWS}
+    Sync: TRTLCriticalSection;
+    {$ELSE}
+    Sync: pthread_mutex_t; { POSIX thread mutex }
+    {$ENDIF}
+    {$ELSE}
+    Sync: Pointer;  { Reserved for future thread safety }
+    {$ENDIF}
   end;
 
 { Global logger instance }
@@ -168,7 +184,7 @@ end;
 
 function LogLevelColor(Level: TLogLevel): string;
 begin
-  if not GlobalLogger^.UseColors then
+  if (GlobalLogger = nil) or not GlobalLogger^.UseColors then
   begin
     Result := '';
     Exit;
@@ -195,6 +211,9 @@ end;
 { Logger Management                                                           }
 { ============================================================================ }
 
+procedure LoggerLock(Logger: PLogger); forward;
+procedure LoggerUnlock(Logger: PLogger); forward;
+
 function LoggerCreate: PLogger;
 begin
   New(Result);
@@ -210,7 +229,14 @@ begin
   Result^.QueueTail := nil;
   Result^.MaxQueueSize := 1000;
   Result^.QueueSize := 0;
-  Result^.Sync := nil;
+  
+  {$IFDEF LOGGING_THREADSAFE}
+  {$IFDEF MSWINDOWS}
+  InitializeCriticalSection(Result^.Sync);
+  {$ELSE}
+  pthread_mutex_init(@Result^.Sync, nil);
+  {$ENDIF}
+  {$ENDIF}
   
   {$IFDEF MSWINDOWS}
   { Disable colors on Windows unless ANSICON is set }
@@ -225,7 +251,39 @@ begin
   
   LoggerFlush(Logger);
   LoggerCloseFile(Logger);
+  
+  {$IFDEF LOGGING_THREADSAFE}
+  {$IFDEF MSWINDOWS}
+  DeleteCriticalSection(Logger^.Sync);
+  {$ELSE}
+  pthread_mutex_destroy(@Logger^.Sync);
+  {$ENDIF}
+  {$ENDIF}
+  
   Dispose(Logger);
+end;
+
+{ Lock/unlock helper procedures }
+procedure LoggerLock(Logger: PLogger);
+begin
+  {$IFDEF LOGGING_THREADSAFE}
+  {$IFDEF MSWINDOWS}
+  EnterCriticalSection(Logger^.Sync);
+  {$ELSE}
+  pthread_mutex_lock(@Logger^.Sync);
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+procedure LoggerUnlock(Logger: PLogger);
+begin
+  {$IFDEF LOGGING_THREADSAFE}
+  {$IFDEF MSWINDOWS}
+  LeaveCriticalSection(Logger^.Sync);
+  {$ELSE}
+  pthread_mutex_unlock(@Logger^.Sync);
+  {$ENDIF}
+  {$ENDIF}
 end;
 
 function InitLogging: Boolean;
@@ -401,9 +459,14 @@ procedure Log(Logger: PLogger; Level: TLogLevel; const Category, Msg: string);
 var
   Entry: PLogEntry;
   PrevTail: PLogEntry;
+  ShouldOutput: Boolean;
 begin
   if Logger = nil then Exit;
   if Level < Logger^.MinLevel then Exit;
+  
+  { Check queue size before allocating }
+  if Logger^.QueueSize >= Logger^.MaxQueueSize then
+    Exit;  { Queue full - drop message }
   
   { Create entry }
   New(Entry);
@@ -414,28 +477,42 @@ begin
   Entry^.ThreadID := 0;  { Could use ThreadID }
   Entry^.Next := nil;
   
-  { Add to queue }
-  if Logger^.Queue = nil then
-  begin
-    Logger^.Queue := Entry;
-    Logger^.QueueTail := Entry;
-  end
-  else
-  begin
-    PrevTail := Logger^.QueueTail;
-    PrevTail^.Next := Entry;
-    Logger^.QueueTail := Entry;
+  { Lock for queue operations }
+  LoggerLock(Logger);
+  try
+    { Double-check queue size after locking }
+    if Logger^.QueueSize >= Logger^.MaxQueueSize then
+    begin
+      Dispose(Entry);
+      Exit;
+    end;
+    
+    { Add to queue }
+    if Logger^.Queue = nil then
+    begin
+      Logger^.Queue := Entry;
+      Logger^.QueueTail := Entry;
+    end
+    else
+    begin
+      PrevTail := Logger^.QueueTail;
+      PrevTail^.Next := Entry;
+      Logger^.QueueTail := Entry;
+    end;
+    Inc(Logger^.QueueSize);
+    
+    { Output while holding lock to prevent race with LoggerFlush }
+    FormatAndOutput(Logger, Entry);
+    
+    { Remove from queue }
+    Logger^.Queue := Entry^.Next;
+    if Logger^.Queue = nil then
+      Logger^.QueueTail := nil;
+    Dec(Logger^.QueueSize);
+  except
+    { Ignore errors - entry will be cleaned up by LoggerDestroy }
   end;
-  Inc(Logger^.QueueSize);
-  
-  { Output immediately for now (synchronous) }
-  FormatAndOutput(Logger, Entry);
-  
-  { Remove from queue }
-  Logger^.Queue := Entry^.Next;
-  if Logger^.Queue = nil then
-    Logger^.QueueTail := nil;
-  Dec(Logger^.QueueSize);
+  LoggerUnlock(Logger);
   
   Dispose(Entry);
 end;
@@ -511,7 +588,18 @@ var
 begin
   if Logger = nil then Exit;
   
-  Entry := Logger^.Queue;
+  LoggerLock(Logger);
+  try
+    Entry := Logger^.Queue;
+    Logger^.Queue := nil;
+    Logger^.QueueTail := nil;
+    Logger^.QueueSize := 0;
+  except
+    Entry := nil;
+  end;
+  LoggerUnlock(Logger);
+  
+  { Process entries outside of lock }
   while Entry <> nil do
   begin
     Next := Entry^.Next;
@@ -519,10 +607,6 @@ begin
     Dispose(Entry);
     Entry := Next;
   end;
-  
-  Logger^.Queue := nil;
-  Logger^.QueueTail := nil;
-  Logger^.QueueSize := 0;
 end;
 
 initialization

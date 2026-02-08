@@ -15,7 +15,9 @@ uses
   SysUtils, sha1, utils;
 
 const
-  SHA1_HASH_SIZE = 20;
+  SHA1_HASH_SIZE     = 20;     { 20 bytes = 160 bits }
+  SHA1_HEX_LENGTH    = 40;     { 40 hex characters }
+  SHA1_BASE32_LENGTH = 32;     { 32 base32 characters for magnet links }
 
 type
   { 20-byte SHA1 digest }
@@ -172,10 +174,10 @@ begin
       SHA1Update(Context, Buffer^, BytesRead);
       Inc(TotalRead, BytesRead);
       
-      { Report progress }
+      { Report progress - use QWord to prevent overflow on large files }
       if (ProgressCallback <> nil) and (FileSize > 0) then
       begin
-        CurrentPercent := (TotalRead * 100) div FileSize;
+        CurrentPercent := Integer((QWord(TotalRead) * 100) div QWord(FileSize));
         if CurrentPercent <> LastPercent then
         begin
           ProgressCallback(CurrentPercent);
@@ -222,7 +224,7 @@ function SHA1DigestToHex(const Digest: TSHA1Digest): string;
 var
   I: Integer;
 begin
-  SetLength(Result, SHA1_HASH_SIZE * 2);
+  SetLength(Result, SHA1_HEX_LENGTH);
   for I := 0 to SHA1_HASH_SIZE - 1 do
   begin
     Result[I * 2 + 1] := HEX_CHARS_LOWER[Digest[I] shr 4];
@@ -250,7 +252,7 @@ var
 begin
   Result := False;
   
-  if Length(Hex) <> SHA1_HASH_SIZE * 2 then Exit;
+  if Length(Hex) <> SHA1_HEX_LENGTH then Exit;
   
   for I := 0 to SHA1_HASH_SIZE - 1 do
   begin
@@ -272,7 +274,7 @@ var
   J: Integer;
 begin
   { SHA1_HASH_SIZE bytes = 160 bits = 32 base32 chars }
-  OutputLen := 32;
+  OutputLen := SHA1_BASE32_LENGTH;
   SetLength(Result, OutputLen);
   
   Val := 0;
@@ -381,6 +383,12 @@ var
     while J < DataLen do
     begin
       if (Data[J] < '0') or (Data[J] > '9') then Break;
+      { Check for overflow before multiplication }
+      if Value > (High(Int64) div 10) then
+      begin
+        Result := False;  { Overflow would occur }
+        Exit;
+      end;
       Value := Value * 10 + (Ord(Data[J]) - Ord('0'));
       Inc(J);
     end;

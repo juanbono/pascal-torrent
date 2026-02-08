@@ -154,7 +154,7 @@ begin
   for I := 2 to 5 do
   begin
     New(Node);
-    Node^.Data := Pointer(I);
+    Node^.Data := Pointer(PtrUInt(I));
     ListAddTail(Head, Node);
   end;
   TestResult('Add 4 more elements',
@@ -947,7 +947,6 @@ procedure TestTimeUtilities;
 var
   StartTime, EndTime: Int64;
   MonoStart, MonoEnd: Double;
-  I: Integer;
 begin
   WriteLn(#10'=== Testing Time Utilities ===');
   
@@ -1031,7 +1030,7 @@ begin
   WriteLn(#10'=== Testing Swap64 ===');
   
   TestResult('Swap64 0x0123456789ABCDEF',
-             Swap64($0123456789ABCDEF) = $EFCDAB8967452301);
+             Swap64(QWord($0123456789ABCDEF)) = QWord($EFCDAB8967452301));
   TestResult('Swap64 round-trip',
              Swap64(Swap64($1234567890ABCDEF)) = $1234567890ABCDEF);
 end;
@@ -1144,6 +1143,9 @@ var
 begin
   WriteLn(#10'=== Testing Hex Conversions Edge Cases ===');
   
+  { Initialize array to suppress compiler warning }
+  FillChar(StaticBytes, SizeOf(StaticBytes), 0);
+  
   { Test 1: BytesToHex with 0 length }
   Hex := BytesToHex(StaticBytes, 0);
   TestResult('BytesToHex with len=0 returns empty',
@@ -1212,7 +1214,6 @@ procedure TestFileOperationsMore;
 var
   TestFile1, TestFile2: string;
   F: File;
-  Content: string;
 begin
   WriteLn(#10'=== Testing Additional File Operations ===');
   
@@ -1278,6 +1279,9 @@ var
   StaticBytes: array[0..31] of Byte;
 begin
   WriteLn(#10'=== Testing Hex Conversions ===');
+  
+  { Initialize array to suppress compiler warning }
+  FillChar(StaticBytes, SizeOf(StaticBytes), 0);
   
   { Test 1: Bytes to hex }
   StaticBytes[0] := $AB;

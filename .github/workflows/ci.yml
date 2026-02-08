@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Free Pascal
+      run: |
+        brew install fpc
+        fpc -v
+    
+    - name: Build all tests
+      run: make all
+    
+    - name: Run all tests
+      run: make test
+
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Free Pascal
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fpc
+        fpc -v
+    
+    - name: Build all tests
+      run: make all
+    
+    - name: Run all tests
+      run: make test
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Free Pascal
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fpc
+    
+    - name: Run linter
+      run: make lint
+
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Check code formatting
+      run: make format-check

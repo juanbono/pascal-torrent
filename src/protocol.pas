@@ -40,6 +40,17 @@ const
   BLOCK_SIZE         = 16384;  { 16 KiB - standard block size }
   MAX_REQUESTS       = 250;    { Maximum pipelined requests }
   
+  { Message length prefixes (4 bytes) + message ID (1 byte) + payload }
+  LEN_KEEPALIVE      = 0;      { 0 bytes - no message ID }
+  LEN_CHOKE          = 1;      { 1 byte - message ID only }
+  LEN_UNCHOKE        = 1;      { 1 byte - message ID only }
+  LEN_INTERESTED     = 1;      { 1 byte - message ID only }
+  LEN_NOT_INTERESTED = 1;      { 1 byte - message ID only }
+  LEN_HAVE           = 5;      { 1 byte ID + 4 bytes piece index }
+  LEN_REQUEST        = 13;     { 1 byte ID + 4 bytes index + 4 bytes begin + 4 bytes length }
+  LEN_CANCEL         = 13;     { Same structure as request }
+  LEN_PIECE_HEADER   = 9;      { 1 byte ID + 4 bytes index + 4 bytes begin (not including data) }
+  
   { Reserved byte flags (BEP extensions) }
   EXTENSION_PROTOCOL = $10;  { Bit 4 - Extension protocol (BEP 10) }
   FAST_EXTENSION     = $04;  { Bit 2 - Fast extension (BEP 6) }
@@ -136,31 +147,47 @@ function MessageComplete(Buffer: PByteArray; BufLen: Integer): Integer;
 { Simple Message Builders (for common messages)                                }
 { ============================================================================ }
 
-{ Build a choke message (5 bytes) }
-procedure BuildChoke(Buffer: PByteArray; out Len: Integer);
+{ Build a choke message (5 bytes)
+  BufLen must be at least 5 bytes
+  Returns: True on success, False if buffer too small }
+function BuildChoke(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build an unchoke message (5 bytes) }
-procedure BuildUnchoke(Buffer: PByteArray; out Len: Integer);
+{ Build an unchoke message (5 bytes)
+  BufLen must be at least 5 bytes
+  Returns: True on success, False if buffer too small }
+function BuildUnchoke(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build an interested message (5 bytes) }
-procedure BuildInterested(Buffer: PByteArray; out Len: Integer);
+{ Build an interested message (5 bytes)
+  BufLen must be at least 5 bytes
+  Returns: True on success, False if buffer too small }
+function BuildInterested(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build a not interested message (5 bytes) }
-procedure BuildNotInterested(Buffer: PByteArray; out Len: Integer);
+{ Build a not interested message (5 bytes)
+  BufLen must be at least 5 bytes
+  Returns: True on success, False if buffer too small }
+function BuildNotInterested(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build a have message (9 bytes) }
-procedure BuildHave(PieceIndex: Integer; Buffer: PByteArray; out Len: Integer);
+{ Build a have message (9 bytes)
+  BufLen must be at least 9 bytes
+  Returns: True on success, False if buffer too small }
+function BuildHave(PieceIndex: Integer; Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build a request message (17 bytes) }
-procedure BuildRequest(Index, BeginOffset, Length: Integer;
-                       Buffer: PByteArray; out Len: Integer);
+{ Build a request message (17 bytes)
+  BufLen must be at least 17 bytes
+  Returns: True on success, False if buffer too small }
+function BuildRequest(Index, BeginOffset, Length: Integer;
+                      Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build a cancel message (17 bytes) }
-procedure BuildCancel(Index, BeginOffset, Length: Integer;
-                      Buffer: PByteArray; out Len: Integer);
+{ Build a cancel message (17 bytes)
+  BufLen must be at least 17 bytes
+  Returns: True on success, False if buffer too small }
+function BuildCancel(Index, BeginOffset, Length: Integer;
+                     Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
-{ Build a port message (7 bytes) }
-procedure BuildPort(Port: Word; Buffer: PByteArray; out Len: Integer);
+{ Build a port message (7 bytes)
+  BufLen must be at least 7 bytes
+  Returns: True on success, False if buffer too small }
+function BuildPort(Port: Word; Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 
 { Build a bitfield message (variable size)
   Bitfield must point to valid data, it is NOT copied
@@ -583,71 +610,119 @@ end;
 { Simple Message Builders                                                      }
 { ============================================================================ }
 
-procedure BuildChoke(Buffer: PByteArray; out Len: Integer);
+function BuildChoke(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 1);  { Length = 1 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 5) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_CHOKE);
   Buffer^[4] := MSG_CHOKE;
   Len := 5;
+  Result := True;
 end;
 
-procedure BuildUnchoke(Buffer: PByteArray; out Len: Integer);
+function BuildUnchoke(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 1);  { Length = 1 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 5) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_UNCHOKE);
   Buffer^[4] := MSG_UNCHOKE;
   Len := 5;
+  Result := True;
 end;
 
-procedure BuildInterested(Buffer: PByteArray; out Len: Integer);
+function BuildInterested(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 1);  { Length = 1 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 5) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_INTERESTED);
   Buffer^[4] := MSG_INTERESTED;
   Len := 5;
+  Result := True;
 end;
 
-procedure BuildNotInterested(Buffer: PByteArray; out Len: Integer);
+function BuildNotInterested(Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 1);  { Length = 1 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 5) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_NOT_INTERESTED);
   Buffer^[4] := MSG_NOT_INTERESTED;
   Len := 5;
+  Result := True;
 end;
 
-procedure BuildHave(PieceIndex: Integer; Buffer: PByteArray; out Len: Integer);
+function BuildHave(PieceIndex: Integer; Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 5);  { Length = 5 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 9) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_HAVE);
   Buffer^[4] := MSG_HAVE;
   WriteBE32(Buffer, 5, Cardinal(PieceIndex));
   Len := 9;
+  Result := True;
 end;
 
-procedure BuildRequest(Index, BeginOffset, Length: Integer;
-                       Buffer: PByteArray; out Len: Integer);
+function BuildRequest(Index, BeginOffset, Length: Integer;
+                      Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 13);  { Length = 13 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 17) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_REQUEST);
   Buffer^[4] := MSG_REQUEST;
   WriteBE32(Buffer, 5, Cardinal(Index));
   WriteBE32(Buffer, 9, Cardinal(BeginOffset));
   WriteBE32(Buffer, 13, Cardinal(Length));
   Len := 17;
+  Result := True;
 end;
 
-procedure BuildCancel(Index, BeginOffset, Length: Integer;
-                      Buffer: PByteArray; out Len: Integer);
+function BuildCancel(Index, BeginOffset, Length: Integer;
+                     Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 13);  { Length = 13 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 17) then Exit;
+  
+  WriteBE32(Buffer, 0, LEN_CANCEL);
   Buffer^[4] := MSG_CANCEL;
   WriteBE32(Buffer, 5, Cardinal(Index));
   WriteBE32(Buffer, 9, Cardinal(BeginOffset));
   WriteBE32(Buffer, 13, Cardinal(Length));
   Len := 17;
+  Result := True;
 end;
 
-procedure BuildPort(Port: Word; Buffer: PByteArray; out Len: Integer);
+function BuildPort(Port: Word; Buffer: PByteArray; BufLen: Integer; out Len: Integer): Boolean;
 begin
-  WriteBE32(Buffer, 0, 3);  { Length = 3 }
+  Result := False;
+  Len := 0;
+  
+  if (Buffer = nil) or (BufLen < 7) then Exit;
+  
+  WriteBE32(Buffer, 0, 3);  { LEN_PORT = 3: 1 byte ID + 2 bytes port number }
   Buffer^[4] := MSG_PORT;
   Buffer^[5] := (Port shr 8) and $FF;
   Buffer^[6] := Port and $FF;
   Len := 7;
+  Result := True;
 end;
 
 function BuildBitfield(Bitfield: PByteArray; BitfieldLen: Integer;

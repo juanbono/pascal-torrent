@@ -342,6 +342,8 @@ procedure TestMemoryManagement;
 var
   I: Integer;
   Value: PBencodeValue;
+  Original: PBencodeValue;
+  Cloned: PBencodeValue;
 begin
   WriteLn(#10'=== Testing Memory Management ===');
   
@@ -363,13 +365,14 @@ begin
   end;
   TestResult('Create/free complex structure 100x', True, 'Manual check needed');
   
-  { Test 3: Clone and free }
-  Value := BencodeNewDict;
-  BencodeDictAdd(Value, 'key', BencodeNewString('value'));
-  BencodeDictAdd(Value, 'num', BencodeNewInteger(42));
+  { Test 3: Clone and free - FIXED: properly free both original and clone }
+  Original := BencodeNewDict;
+  BencodeDictAdd(Original, 'key', BencodeNewString('value'));
+  BencodeDictAdd(Original, 'num', BencodeNewInteger(42));
   
-  Value := BencodeClone(Value);
-  BencodeFree(Value);
+  Cloned := BencodeClone(Original);
+  BencodeFree(Original);  { Free the original }
+  BencodeFree(Cloned);    { Free the clone }
   TestResult('Clone and free', True);
 end;
 
@@ -451,7 +454,7 @@ end;
 procedure TestCloneAndEquality;
 var
   A, B, C: PBencodeValue;
-  EncodedA, EncodedB: string;
+  EncodedA: string;
 begin
   WriteLn(#10'=== Testing Clone and Equality ===');
   

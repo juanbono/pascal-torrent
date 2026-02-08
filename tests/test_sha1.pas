@@ -1,5 +1,7 @@
 {
   test_sha1.pas - Comprehensive tests for SHA1 utilities
+  
+  Uses the shared test framework for consistent test reporting.
 }
 
 {$mode objfpc}{$H+}
@@ -7,29 +9,7 @@
 program test_sha1;
 
 uses
-  SysUtils, StrUtils, sha1utils, sha1;
-
-var
-  TotalTests: Integer = 0;
-  PassedTests: Integer = 0;
-  FailedTests: Integer = 0;
-
-procedure TestResult(const TestName: string; Passed: Boolean; const Msg: string = '');
-begin
-  Inc(TotalTests);
-  if Passed then
-  begin
-    Inc(PassedTests);
-    WriteLn('[PASS] ', TestName);
-  end
-  else
-  begin
-    Inc(FailedTests);
-    WriteLn('[FAIL] ', TestName);
-    if Msg <> '' then
-      WriteLn('       ', Msg);
-  end;
-end;
+  SysUtils, StrUtils, sha1utils, sha1, testframework;
 
 procedure TestNISTVectors;
 { NIST SHA1 test vectors from FIPS 180-2 }
@@ -131,7 +111,6 @@ var
   Digest: TSHA1Digest;
   HexStr: string;
   Recovered: TSHA1Digest;
-  I: Integer;
 begin
   WriteLn(#10'=== Testing Digest Utilities ===');
   
@@ -191,7 +170,6 @@ end;
 procedure TestBitTorrentSpecific;
 var
   Digest: TSHA1Digest;
-  IsValid: Boolean;
 begin
   WriteLn(#10'=== Testing BitTorrent Specific ===');
   
@@ -408,8 +386,9 @@ begin
              not Result);
 end;
 
-procedure RunAllTests;
 begin
+  Randomize;
+  
   WriteLn('==============================================');
   WriteLn('  SHA1 UNIT TEST SUITE');
   WriteLn('==============================================');
@@ -425,22 +404,5 @@ begin
   TestFileOperations;
   TestComputeInfoHash;
   
-  WriteLn(#10'==============================================');
-  WriteLn('  RESULTS: ', PassedTests, '/', TotalTests, ' tests passed');
-  WriteLn('==============================================');
-  
-  if FailedTests > 0 then
-  begin
-    WriteLn('FAILED: ', FailedTests, ' test(s) failed');
-    Halt(1);
-  end
-  else
-  begin
-    WriteLn('All tests passed!');
-  end;
-end;
-
-begin
-  Randomize;
-  RunAllTests;
+  ExitWithResult;
 end.

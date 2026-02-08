@@ -165,7 +165,6 @@ var
   Count: Integer;
   Path: string;
   PeerID: array[0..19] of Byte;
-  I: Integer;
 begin
   WriteLn(#10'=== UTILS TESTS ===');
   

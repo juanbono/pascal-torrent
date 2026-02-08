@@ -282,6 +282,15 @@ begin
       Break;
     
     Digit := Ord(Data[I]) - Ord('0');
+    
+    { Check for overflow before multiplication }
+    if Value > (High(Int64) - Digit) div 10 then
+    begin
+      { Integer overflow }
+      Result := False;
+      Exit;
+    end;
+    
     Value := Value * 10 + Digit;
     Inc(I);
   end;
@@ -1130,12 +1139,23 @@ end;
 
 function BencodeNewStringBuf(Buf: PChar; Len: Integer): PBencodeValue;
 begin
+  Result := nil;
+  
   New(Result);
+  if Result = nil then Exit;  { Memory allocation failed }
+  
   Result^.ValueType := btString;
   Result^.StrLen := Len;
   if Len > 0 then
   begin
     GetMem(Result^.StrVal, Len);
+    if Result^.StrVal = nil then
+    begin
+      { String data allocation failed - clean up and return nil }
+      Dispose(Result);
+      Result := nil;
+      Exit;
+    end;
     Move(Buf^, Result^.StrVal^, Len);
   end
   else
@@ -1146,21 +1166,33 @@ end;
 
 function BencodeNewInteger(V: Int64): PBencodeValue;
 begin
+  Result := nil;
+  
   New(Result);
+  if Result = nil then Exit;  { Memory allocation failed }
+  
   Result^.ValueType := btInteger;
   Result^.IntVal := V;
 end;
 
 function BencodeNewList: PBencodeValue;
 begin
+  Result := nil;
+  
   New(Result);
+  if Result = nil then Exit;  { Memory allocation failed }
+  
   Result^.ValueType := btList;
   Result^.ListHead := nil;
 end;
 
 function BencodeNewDict: PBencodeValue;
 begin
+  Result := nil;
+  
   New(Result);
+  if Result = nil then Exit;  { Memory allocation failed }
+  
   Result^.ValueType := btDict;
   Result^.DictHead := nil;
 end;

@@ -39,9 +39,6 @@ begin
   end;
 end;
 
-var
-  NumPieces: Integer;  { Global for test helper functions }
-
 { ============================================================================ }
 { Test: Create minimal single-file torrent metainfo                            }
 { ============================================================================ }
@@ -131,9 +128,7 @@ var
   Pieces: string;
   I: Integer;
   TotalLength: Int64;
-  PathParts: array of string;
   PathList: PBencodeValue;
-  J: Integer;
   PieceCount: Integer;
 begin
   Result := nil;
@@ -335,7 +330,6 @@ var
   Meta: PTorrentMeta;
   Result: TMetainfoResult;
   Hash: PSHA1Digest;
-  ExpectedHash: TSHA1Digest;
 begin
   WriteLn(#10'=== Testing Piece Hash Access ===');
   
@@ -805,8 +799,6 @@ var
   Root, Info: PBencodeValue;
   Meta: PTorrentMeta;
   Result: TMetainfoResult;
-  I: Integer;
-  Pieces: string;
 begin
   WriteLn(#10'=== Testing Malformed Torrent Handling ===');
   

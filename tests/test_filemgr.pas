@@ -255,8 +255,8 @@ begin
     try
       { Modify the hash for piece 0 to match our test data }
       GenerateTestData(@WriteData, 1024, 0);
-      Meta^.Pieces^[0] := 0;
-      Meta^.Pieces^[1] := 0;
+      { FIXED: Initialize all 20 bytes of the hash (was only setting 2 bytes) }
+      FillChar(Meta^.Pieces^[0], SHA1_HASH_SIZE, 0);
       
       { Create file manager }
       if not FileManagerCreate(Meta, TempDir, FM) then
@@ -740,6 +740,7 @@ var
   Meta: PTorrentMeta;
   ParseResult: TMetainfoResult;
   FM: PFileManager;
+  IORes: TIOResult;  { Local variable for I/O results }
 begin
   WriteLn(#10'=== Testing Piece Edge Cases ===');
   
@@ -835,9 +836,14 @@ begin
       if FileManagerCreate(Meta, TempDir, FM) then
       begin
         try
-          { These should not crash }
-          TestResult('Negative index with valid FM', True);
-          TestResult('Large index with valid FM', True);
+          { These should not crash and return safe defaults }
+          { FIXED: These were placeholder tests that didn't actually verify anything }
+          TestResult('Negative index returns not verified', 
+                     not FileManagerIsPieceVerified(FM, -1));
+          TestResult('Large index returns not verified', 
+                     not FileManagerIsPieceVerified(FM, 1000));
+          TestResult('Negative verify piece returns false',
+                     not FileManagerVerifyPiece(FM, -1, IORes));
           TestResult('Out of bounds not verified 1', 
                      not FileManagerIsPieceVerified(FM, -1));
           TestResult('Out of bounds not verified 2', 

@@ -22,6 +22,9 @@ const
   
   { Default piece length if not specified }
   DEFAULT_PIECE_LENGTH = 262144;  { 256 KB }
+  
+  { MD5 checksum is 32 hex characters (128 bits = 16 bytes = 32 hex chars) }
+  MD5_HEX_LENGTH = 32;
 
 type
   { Forward declarations }
@@ -299,12 +302,71 @@ begin
   end;
 end;
 
-{ Check if a path contains traversal sequences }
+{ Check if a path contains traversal sequences or other dangerous patterns }
 function ContainsTraversal(const Path: string): Boolean;
+var
+  I: Integer;
 begin
-  Result := (Pos('..', Path) > 0) or 
-            (Pos('\', Path) > 0) or 
-            (Path <> '' ) and (Path[1] = '/');
+  { Check for empty path }
+  if Path = '' then
+  begin
+    Result := False;
+    Exit;
+  end;
+  
+  { Check for parent directory traversal }
+  if Pos('..', Path) > 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Check for Windows-style separators (Unix should not have these) }
+  if Pos('\', Path) > 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Check for absolute paths }
+  if (Path[1] = '/') then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Check for null bytes (injection attack) }
+  if Pos(#0, Path) > 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Check for double slashes (could lead to unexpected behavior) }
+  if Pos('//', Path) > 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Check for tilde expansion (home directory) }
+  if Path[1] = '~' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  
+  { Check for control characters in path }
+  for I := 1 to Length(Path) do
+  begin
+    if Ord(Path[I]) < 32 then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+  
+  Result := False;
 end;
 
 { Build path from bencode path list }
@@ -391,10 +453,10 @@ begin
   Md5Val := BencodeDictGet(FileDict, 'md5sum');
   if (Md5Val <> nil) and (Md5Val^.ValueType = btString) then
   begin
-    if Md5Val^.StrLen = 32 then  { MD5 is 32 hex chars }
+    if Md5Val^.StrLen = MD5_HEX_LENGTH then  { MD5 is 32 hex chars }
     begin
-      SetLength(Entry^.Md5Sum, 32);
-      Move(Md5Val^.StrVal^, Entry^.Md5Sum[1], 32);
+      SetLength(Entry^.Md5Sum, MD5_HEX_LENGTH);
+      Move(Md5Val^.StrVal^, Entry^.Md5Sum[1], MD5_HEX_LENGTH);
     end;
   end;
   
@@ -738,10 +800,10 @@ begin
     Md5Val := BencodeDictGet(InfoDict, 'md5sum');
     if (Md5Val <> nil) and (Md5Val^.ValueType = btString) then
     begin
-      if Md5Val^.StrLen = 32 then
+      if Md5Val^.StrLen = MD5_HEX_LENGTH then
       begin
-        SetLength(Meta^.Md5Sum, 32);
-        Move(Md5Val^.StrVal^, Meta^.Md5Sum[1], 32);
+        SetLength(Meta^.Md5Sum, MD5_HEX_LENGTH);
+        Move(Md5Val^.StrVal^, Meta^.Md5Sum[1], MD5_HEX_LENGTH);
       end;
     end;
   end

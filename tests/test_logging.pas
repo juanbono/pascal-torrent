@@ -95,9 +95,6 @@ begin
 end;
 
 procedure TestLogLevelToStr;
-var
-  Level: TLogLevel;
-  S: string;
 begin
   WriteLn(#10'=== Testing LogLevelToStr ===');
   
@@ -145,10 +142,6 @@ procedure TestLogLevelFiltering;
 var
   Logger: PLogger;
   OldDestinations: TLogDestinations;
-  LogOutput: string;
-  F: Text;
-  Line: string;
-  DebugFound: Boolean;
 begin
   WriteLn(#10'=== Testing Log Level Filtering ===');
   
@@ -304,7 +297,6 @@ end;
 
 procedure TestLogConvenienceFunctions;
 var
-  Logger: PLogger;
   TestFilename: string;
 begin
   WriteLn(#10'=== Testing Log Convenience Functions ===');

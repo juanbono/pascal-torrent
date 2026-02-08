@@ -274,6 +274,24 @@ function BitfieldBytes(PieceCount: Integer): Integer;
 { Create directory and all parent directories as needed }
 function EnsureDirectories(const Path: string): Boolean;
 
+{ ============================================================================ }
+{ I/O Helper Functions                                                        }
+{ ============================================================================ }
+
+{ Check IOResult and return error message if failed
+  Returns: True if IOResult = 0, False otherwise
+  ErrorMsg is set to a descriptive error message if IOResult <> 0 }
+function CheckIOResult(var Success: Boolean; const Operation: string; 
+                       out ErrorMsg: string): Boolean;
+
+{ Check IOResult and return False if failed (simpler version)
+  Returns: True if IOResult = 0, False otherwise }
+function IOOK(const Operation: string): Boolean;
+
+{ Get error message for IOResult
+  Returns: Descriptive error message }
+function GetIOErrorMsg(const Operation: string): string;
+
 implementation
 
 { ============================================================================ }
@@ -1334,6 +1352,51 @@ begin
     Result := 0
   else
     Result := (PieceCount + 7) div 8;
+end;
+
+{ ============================================================================ }
+{ I/O Helper Functions Implementation                                           }
+{ ============================================================================ }
+
+function CheckIOResult(var Success: Boolean; const Operation: string; 
+                       out ErrorMsg: string): Boolean;
+var
+  Err: Integer;
+begin
+  Err := IOResult;
+  if Err = 0 then
+  begin
+    Success := True;
+    ErrorMsg := '';
+    Result := True;
+  end
+  else
+  begin
+    Success := False;
+    ErrorMsg := Format('%s failed: I/O error %d', [Operation, Err]);
+    Result := False;
+  end;
+end;
+
+function IOOK(const Operation: string): Boolean;
+var
+  Err: Integer;
+  IgnoreOp: string;
+begin
+  Err := IOResult;
+  Result := Err = 0;
+  IgnoreOp := Operation; { Suppress unused parameter warning }
+end;
+
+function GetIOErrorMsg(const Operation: string): string;
+var
+  Err: Integer;
+begin
+  Err := IOResult;
+  if Err = 0 then
+    Result := ''
+  else
+    Result := Format('%s failed: I/O error %d', [Operation, Err]);
 end;
 
 end.

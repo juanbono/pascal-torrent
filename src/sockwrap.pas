@@ -313,6 +313,77 @@ begin
 end;
 
 { ============================================================================ }
+{ Thread-Safe IP Address Helpers (replacing deprecated inet_addr/inet_ntoa)    }
+{ ============================================================================ }
+
+{ Convert IP address string to network byte order (thread-safe)
+  Returns: True on success, False on failure }
+function IPStringToAddr(const IPStr: string; out Addr: Cardinal): Boolean;
+var
+  Parts: array[0..3] of Integer;
+  I, J, PartIdx: Integer;
+  PartStr: string;
+  Code: Integer;
+begin
+  Result := False;
+  Addr := 0;
+  
+  if IPStr = '' then Exit;
+  
+  { Parse IP string manually (e.g., "192.168.1.1") }
+  PartIdx := 0;
+  PartStr := '';
+  
+  for I := 1 to Length(IPStr) do
+  begin
+    if IPStr[I] = '.' then
+    begin
+      if PartIdx > 3 then Exit;  { Too many parts }
+      Val(PartStr, Parts[PartIdx], Code);
+      if Code <> 0 then Exit;  { Invalid number }
+      if (Parts[PartIdx] < 0) or (Parts[PartIdx] > 255) then Exit;
+      PartStr := '';
+      Inc(PartIdx);
+    end
+    else if IPStr[I] in ['0'..'9'] then
+      PartStr := PartStr + IPStr[I]
+    else
+      Exit;  { Invalid character }
+  end;
+  
+  { Process last part }
+  if PartIdx <> 3 then Exit;  { Wrong number of parts }
+  Val(PartStr, Parts[3], Code);
+  if Code <> 0 then Exit;
+  if (Parts[3] < 0) or (Parts[3] > 255) then Exit;
+  
+  { Combine into network byte order (big-endian) }
+  Addr := (Cardinal(Parts[0]) shl 24) or
+          (Cardinal(Parts[1]) shl 16) or
+          (Cardinal(Parts[2]) shl 8) or
+          Cardinal(Parts[3]);
+  Result := True;
+end;
+
+{ Convert network byte order to IP address string (thread-safe)
+  Returns: IP string like "192.168.1.1" }
+function AddrToIPString(Addr: Cardinal): string;
+begin
+  Result := IntToStr((Addr shr 24) and $FF) + '.' +
+            IntToStr((Addr shr 16) and $FF) + '.' +
+            IntToStr((Addr shr 8) and $FF) + '.' +
+            IntToStr(Addr and $FF);
+end;
+
+{ Check if string is a valid IPv4 address }
+function IsValidIP(const IPStr: string): Boolean;
+var
+  Dummy: Cardinal;
+begin
+  Result := IPStringToAddr(IPStr, Dummy);
+end;
+
+{ ============================================================================ }
 { Initialization and Cleanup                                                   }
 { ============================================================================ }
 
@@ -496,13 +567,17 @@ begin
   
   { Setup address structure }
   FillChar(Addr, SizeOf(Addr), 0);
+  Addr.sin_family := AF_INET;
+  Addr.sin_port := htons(Port);
   {$IFDEF WINDOWS}
-  Addr.sin_family := AF_INET;
-  Addr.sin_port := htons(Port);
-  Addr.sin_addr.S_addr := inet_addr(PChar(IPAddr));
+  { Use thread-safe IP parsing instead of deprecated inet_addr }
+  if not IPStringToAddr(IPAddr, Addr.sin_addr.S_addr) then
+  begin
+    Result := SOCK_ERR_RESOLVE;
+    SetSocketError(Context, Result);
+    Exit;
+  end;
   {$ELSE}
-  Addr.sin_family := AF_INET;
-  Addr.sin_port := htons(Port);
   Addr.sin_addr := StrToNetAddr(IPAddr);
   {$ENDIF}
   
@@ -597,14 +672,23 @@ begin
   
   { Setup address structure }
   FillChar(Addr, SizeOf(Addr), 0);
+  Addr.sin_family := AF_INET;
+  Addr.sin_port := htons(Port);
   {$IFDEF WINDOWS}
-  Addr.sin_family := AF_INET;
-  Addr.sin_port := htons(Port);
-  Addr.sin_addr.S_addr := inet_addr(PChar(BindAddr));
+  { Use thread-safe IP parsing instead of deprecated inet_addr }
+  if BindAddr = '' then
+    Addr.sin_addr.S_addr := INADDR_ANY
+  else if not IPStringToAddr(BindAddr, Addr.sin_addr.S_addr) then
+  begin
+    Result := SOCK_ERR_BIND;
+    SetSocketError(Context, Result);
+    Exit;
+  end;
   {$ELSE}
-  Addr.sin_family := AF_INET;
-  Addr.sin_port := htons(Port);
-  Addr.sin_addr := StrToNetAddr(BindAddr);
+  if BindAddr = '' then
+    Addr.sin_addr.s_addr := INADDR_ANY
+  else
+    Addr.sin_addr := StrToNetAddr(BindAddr);
   {$ENDIF}
   
   {$IFDEF WINDOWS}
@@ -701,14 +785,13 @@ begin
   Client^.Handle := ClientHandle;
   Client^.State := SOCK_STATE_CONNECTED;
   
-  { Get client address }
+  { Get client address - use thread-safe conversion }
   {$IFDEF WINDOWS}
-  Client^.RemoteAddr := inet_ntoa(ClientAddr.sin_addr);
-  Client^.RemotePort := ntohs(ClientAddr.sin_port);
+  Client^.RemoteAddr := AddrToIPString(ntohl(ClientAddr.sin_addr.S_addr));
   {$ELSE}
   Client^.RemoteAddr := NetAddrToStr(ClientAddr.sin_addr);
-  Client^.RemotePort := ntohs(ClientAddr.sin_port);
   {$ENDIF}
+  Client^.RemotePort := ntohs(ClientAddr.sin_port);
   
   Result := SOCK_OK;
 end;
@@ -829,11 +912,14 @@ end;
 
 function SocketSendAll(Context: PSocketContext; Data: Pointer;
                        Len: Integer): Integer;
+const
+  MAX_RETRIES = 10000;  { Prevent infinite loop }
 var
   Sent: Integer;
   TotalSent: Integer;
   Res: Integer;
   DataPtr: PByte;
+  Retries: Integer;
 begin
   Result := SOCK_ERR_INVALID;
   if (Context = nil) or (Data = nil) or (Len <= 0) then Exit;
@@ -841,6 +927,7 @@ begin
   Result := SOCK_OK;
   TotalSent := 0;
   DataPtr := Data;
+  Retries := 0;
   
   while TotalSent < Len do
   begin
@@ -853,11 +940,19 @@ begin
     
     if Sent = 0 then
     begin
-      { Would block - try again }
+      { Would block - try again with retry limit }
+      Inc(Retries);
+      if Retries > MAX_RETRIES then
+      begin
+        Result := SOCK_ERR_SEND;
+        SetSocketError(Context, Result);
+        Exit;
+      end;
       Sleep(1);
       Continue;
     end;
     
+    Retries := 0;  { Reset counter on successful send }
     Inc(DataPtr, Sent);
     Inc(TotalSent, Sent);
   end;
@@ -865,11 +960,14 @@ end;
 
 function SocketReceiveAll(Context: PSocketContext; Buffer: Pointer;
                           Len: Integer): Integer;
+const
+  MAX_RETRIES = 10000;  { Prevent infinite loop }
 var
   Received: Integer;
   TotalReceived: Integer;
   Res: Integer;
   BufPtr: PByte;
+  Retries: Integer;
 begin
   Result := SOCK_ERR_INVALID;
   if (Context = nil) or (Buffer = nil) or (Len <= 0) then Exit;
@@ -877,6 +975,7 @@ begin
   Result := SOCK_OK;
   TotalReceived := 0;
   BufPtr := Buffer;
+  Retries := 0;
   
   while TotalReceived < Len do
   begin
@@ -889,11 +988,19 @@ begin
     
     if Received = 0 then
     begin
-      { Would block - try again }
+      { Would block - try again with retry limit }
+      Inc(Retries);
+      if Retries > MAX_RETRIES then
+      begin
+        Result := SOCK_ERR_RECV;
+        SetSocketError(Context, Result);
+        Exit;
+      end;
       Sleep(1);
       Continue;
     end;
     
+    Retries := 0;  { Reset counter on successful receive }
     Inc(BufPtr, Received);
     Inc(TotalReceived, Received);
   end;
@@ -1011,12 +1118,8 @@ begin
   Result := '';
   if Hostname = '' then Exit;
   
-  { Check if already an IP address }
-  {$IFDEF WINDOWS}
-  if inet_addr(PChar(Hostname)) <> INADDR_NONE then
-  {$ELSE}
-  if StrToNetAddr(Hostname).s_addr <> 0 then
-  {$ENDIF}
+  { Check if already an IP address - use thread-safe check }
+  if IsValidIP(Hostname) then
   begin
     Result := Hostname;
     Exit;
@@ -1024,12 +1127,16 @@ begin
   
   { Resolve hostname }
   {$IFDEF WINDOWS}
+  { Note: gethostbyname is deprecated but Windows alternatives require }
+  { getaddrinfo which needs different headers. For now, this is wrapped }
+  { to minimize thread-safety issues - consider getaddrinfo for new code. }
   HostEnt := gethostbyname(PChar(Hostname));
   if HostEnt <> nil then
   begin
     Addr := HostEnt^.h_addr_list[0];
     if Addr <> nil then
-      Result := inet_ntoa(PInAddr(Addr)^);
+      { Use thread-safe conversion instead of inet_ntoa }
+      Result := AddrToIPString(ntohl(PInAddr(Addr)^.S_addr));
   end;
   {$ELSE}
   if GetHostByName(Hostname, HostEntry) then
@@ -1054,7 +1161,8 @@ begin
   {$IFDEF WINDOWS}
   if getsockname(Context^.Handle, TSockAddr(SockAddr), Len) = 0 then
   begin
-    Addr.Address := inet_ntoa(SockAddr.sin_addr);
+    { Use thread-safe conversion instead of inet_ntoa }
+    Addr.Address := AddrToIPString(ntohl(SockAddr.sin_addr.S_addr));
     Addr.Port := ntohs(SockAddr.sin_port);
     Result := True;
   end;

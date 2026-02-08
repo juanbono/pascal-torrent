@@ -197,15 +197,21 @@ begin
   WriteLn(#10'=== Testing Simple Messages (Choke/Unchoke/Interested) ===');
   
   { Test 1: Choke }
-  BuildChoke(@Buffer, Len);
+  TestResult('BuildChoke with valid buffer', 
+             BuildChoke(@Buffer, SizeOf(Buffer), Len));
   TestResult('Choke message is 5 bytes', 
              Len = 5);
   Success := DecodeMessage(@Buffer, Len, Decoded, Consumed);
   TestResult('Choke decodes successfully', 
              Success and (Decoded.MsgId = MSG_CHOKE));
   
+  { Test 1b: Choke with small buffer fails }
+  TestResult('BuildChoke with small buffer fails', 
+             not BuildChoke(@Buffer, 4, Len));
+  
   { Test 2: Unchoke }
-  BuildUnchoke(@Buffer, Len);
+  TestResult('BuildUnchoke with valid buffer', 
+             BuildUnchoke(@Buffer, SizeOf(Buffer), Len));
   TestResult('Unchoke message is 5 bytes', 
              Len = 5);
   Success := DecodeMessage(@Buffer, Len, Decoded, Consumed);
@@ -213,7 +219,8 @@ begin
              Success and (Decoded.MsgId = MSG_UNCHOKE));
   
   { Test 3: Interested }
-  BuildInterested(@Buffer, Len);
+  TestResult('BuildInterested with valid buffer', 
+             BuildInterested(@Buffer, SizeOf(Buffer), Len));
   TestResult('Interested message is 5 bytes', 
              Len = 5);
   Success := DecodeMessage(@Buffer, Len, Decoded, Consumed);
@@ -221,7 +228,8 @@ begin
              Success and (Decoded.MsgId = MSG_INTERESTED));
   
   { Test 4: Not Interested }
-  BuildNotInterested(@Buffer, Len);
+  TestResult('BuildNotInterested with valid buffer', 
+             BuildNotInterested(@Buffer, SizeOf(Buffer), Len));
   TestResult('Not Interested message is 5 bytes', 
              Len = 5);
   Success := DecodeMessage(@Buffer, Len, Decoded, Consumed);
@@ -250,7 +258,8 @@ begin
   WriteLn(#10'=== Testing Have Message ===');
   
   { Test 1: Build and decode Have(42) }
-  BuildHave(42, @Buffer, Len);
+  TestResult('BuildHave with valid buffer', 
+             BuildHave(42, @Buffer, SizeOf(Buffer), Len));
   TestResult('Have message is 9 bytes', 
              Len = 9);
   
@@ -261,16 +270,22 @@ begin
              Decoded.HaveIndex = 42);
   
   { Test 2: Large piece index }
-  BuildHave(1000000, @Buffer, Len);
+  TestResult('BuildHave with large index', 
+             BuildHave(1000000, @Buffer, SizeOf(Buffer), Len));
   DecodeMessage(@Buffer, Len, Decoded, Consumed);
   TestResult('Have with large index decodes correctly', 
              Decoded.HaveIndex = 1000000);
   
   { Test 3: Piece index 0 }
-  BuildHave(0, @Buffer, Len);
+  TestResult('BuildHave with index 0', 
+             BuildHave(0, @Buffer, SizeOf(Buffer), Len));
   DecodeMessage(@Buffer, Len, Decoded, Consumed);
   TestResult('Have with index 0 decodes correctly', 
              Decoded.HaveIndex = 0);
+  
+  { Test 4: Buffer too small }
+  TestResult('BuildHave with small buffer fails', 
+             not BuildHave(0, @Buffer, 8, Len));
 end;
 
 procedure TestRequestMessage;
@@ -282,7 +297,8 @@ var
 begin
   WriteLn(#10'=== Testing Request Message ===');
   
-  BuildRequest(5, 16384, 16384, @Buffer, Len);
+  TestResult('BuildRequest with valid buffer', 
+             BuildRequest(5, 16384, 16384, @Buffer, SizeOf(Buffer), Len));
   TestResult('Request message is 17 bytes', 
              Len = 17);
   
@@ -394,7 +410,8 @@ var
 begin
   WriteLn(#10'=== Testing Cancel Message ===');
   
-  BuildCancel(10, 65536, 16384, @Buffer, Len);
+  TestResult('BuildCancel with valid buffer', 
+             BuildCancel(10, 65536, 16384, @Buffer, SizeOf(Buffer), Len));
   TestResult('Cancel message is 17 bytes', 
              Len = 17);
   
@@ -418,7 +435,8 @@ var
 begin
   WriteLn(#10'=== Testing Port Message ===');
   
-  BuildPort(6881, @Buffer, Len);
+  TestResult('BuildPort with valid buffer', 
+             BuildPort(6881, @Buffer, SizeOf(Buffer), Len));
   TestResult('Port message is 7 bytes', 
              Len = 7);
   
@@ -429,7 +447,8 @@ begin
              Decoded.DhtPort = 6881);
   
   { Test high port }
-  BuildPort(65535, @Buffer, Len);
+  TestResult('BuildPort with high port', 
+             BuildPort(65535, @Buffer, SizeOf(Buffer), Len));
   DecodeMessage(@Buffer, Len, Decoded, Consumed);
   TestResult('High port decodes correctly', 
              Decoded.DhtPort = 65535);
